@@ -1,0 +1,11 @@
+wp-admin
+wp-includes
+wp-content/uploads
+wp-content/plugins/*
+wp-content/themes/*
+wp-content/upgrade
+.htaccess
+*.php
+xmlrpc.php
+
+!wp-content/themes/the-realm-malta
