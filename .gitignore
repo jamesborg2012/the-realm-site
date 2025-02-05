@@ -1,11 +1,19 @@
+# Folders
 wp-admin
 wp-includes
 wp-content/uploads
-wp-content/plugins/*
 wp-content/themes/*
-wp-content/upgrade
-.htaccess
-*.php
-xmlrpc.php
+wp-content/plugins/*
 
+# Individual Files
+.htaccess
+index.php
+license.txt
+readme.html
+wp-*.php
+xmlrpc.php
+wp-content/debug.log
+
+#Include Files
 !wp-content/themes/the-realm-malta
+!wp-content/plugins/realm-members-manager
