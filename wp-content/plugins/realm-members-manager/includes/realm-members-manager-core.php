@@ -14,10 +14,35 @@ class Realm_Members_Manager_Core
 
     public function __construct()
     {
+        add_action('admin_enqueue_scripts', [$this, 'load_admin_resources']);
+
         $this->modules = array(
             'Members_Manager' => Members_Manager::get_instance(),
+            'Admin_Ajax_Handler' => Admin_Ajax_Handler::get_instance(),
             // 'Operators_Controller' => Operators_Controller::get_instance(),
         );
+    }
+
+    public function load_admin_resources()
+    {
+        wp_register_script(
+            self::PREFIX . 'admin_scripts',
+            plugins_url('assets/js/admin-scripts.js', dirname(__FILE__)),
+            array('jquery'),
+            '0.0.1',
+            true
+        );
+
+        wp_localize_script(
+            self::PREFIX . 'admin_scripts',
+            'rmmAjaxObj',
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'ajaxNonce' => wp_create_nonce('load_all_posts_nonce'),
+            )
+        );
+
+        wp_enqueue_script(self::PREFIX . 'admin_scripts');
     }
 
     /**

@@ -43,16 +43,21 @@ class Members_Manager extends Realm_Members_Manager_Core
         ]);
 
         $users_data = [];
-
         /**
          * @var WP_User $site_user
          */
         foreach ($site_users as $site_user) {
+            $member_number = get_user_meta($site_user->ID, 'rmm_member_number', true);
+            $expires_at = get_user_meta($site_user->ID, 'rmm_membership_expires', true);
+
             $users_data[] = [
+                'id' => $site_user->ID,
+                'member_number' => $member_number == '' ? 'N/A' : $member_number,
                 'name' => $site_user->first_name . ' ' . $site_user->last_name,
                 'email' => $site_user->user_email,
-                'phone' => get_user_meta($site_user->id, 'billing_phone', true),
-                'is_member' => get_user_meta($site_user->id, 'rmm_membership_status', true) == 'active' ? 'Member' : 'Not a Member',
+                'phone' => get_user_meta($site_user->ID, 'billing_phone', true),
+                'is_member' => get_user_meta($site_user->ID, 'rmm_membership_status', true) == 'active' ? 'Member' : 'Not a Member',
+                'expires_at' => $expires_at == '' ? 'N/A' : $expires_at,
             ];
         }
 
@@ -69,7 +74,7 @@ class Members_Manager extends Realm_Members_Manager_Core
         echo $this->render_template(
             'admin/partials/user-members-meta',
             [
-                'user_membership_status' => get_user_meta($user->id, 'rmm_membership_status', true)
+                'user_membership_status' => get_user_meta($user->ID, 'rmm_membership_status', true)
             ]
         );
     }

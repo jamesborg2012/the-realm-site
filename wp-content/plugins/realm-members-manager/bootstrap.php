@@ -19,6 +19,7 @@ define('RMM_REQUIRED_WP_VERSION',  '6.0');
 if (verify_requirements_met()) {
     require('includes/realm-members-manager-core.php');
     require('includes/classes/members-manager.php');
+    require('includes/classes/admin_ajax_handler.php');
     // require('includes/controllers/operators-controller.php');
 
     if (class_exists('Realm_Members_Manager_Core')) {
