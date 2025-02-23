@@ -1,0 +1,52 @@
+@media screen and (min-width: 768px) {
+  .single-product #main .product .woocommerce-product-gallery {
+    width: 58%;
+  }
+}
+@media screen and (min-width: 768px) {
+  .single-product #main .product .summary {
+    width: 34%;
+  }
+}
+.single-product #main .product .price .woocommerce-price-suffix {
+  display: block;
+}
+.single-product #main .product .stock {
+  margin-bottom: 0;
+}
+.single-product #main .product .cart .quantity {
+  float: none;
+  margin-bottom: 20px;
+}
+.single-product #main .product .cart .single_add_to_cart_button {
+  width: 100%;
+  border-radius: 15px;
+  background-color: transparent;
+  border: 2px solid #000;
+  color: #000;
+}
+.single-product #main .product .related .related-products-heading {
+  text-align: left;
+  font-weight: 600;
+}
+.single-product #main .product .related .products {
+  list-style: none;
+}
+.single-product #main .product .related .products .product img {
+  border: 2px solid #000;
+  border-radius: 10px;
+}
+.single-product #main .product .related .products .product .woocommerce-loop-product__title {
+  font-size: 18px;
+}
+.single-product #main .product .related .products .product .price .amount {
+  font-size: 20px;
+}
+.single-product #main .product .related .products .product .price .woocommerce-price-suffix {
+  display: none;
+}
+.single-product #main .product .related .products .product .add_to_cart_button {
+  display: none;
+}
+
+/*# sourceMappingURL=layout.css.map */

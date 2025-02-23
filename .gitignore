@@ -4,6 +4,7 @@ wp-includes
 wp-content/uploads
 wp-content/themes/*
 wp-content/plugins/*
+wp-content/themes/the-realm-malta/node_modules
 
 # Individual Files
 .htaccess
