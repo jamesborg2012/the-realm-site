@@ -5,7 +5,7 @@
     "save-dev": "^0.0.1-security"
   },
   "scripts": {
-    "compile:sass": "sass styles.scss assets/css/layout.css",
-    "watch:sass": "sass --watch styles.scss:assets/css/layout.css --style expanded"
+    "compile:sass": "sass assets/scss/styles.scss assets/css/layout.css",
+    "watch:sass": "sass --watch assets/scss/styles.scss:assets/css/layout.css --style expanded"
   }
 }

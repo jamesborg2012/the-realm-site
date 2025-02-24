@@ -1,3 +1,25 @@
+.woocommerce-shop #main .products .product img {
+  border: 2px solid #000;
+  border-radius: 10px;
+}
+.woocommerce-shop #main .products .product .woocommerce-loop-product__title {
+  font-size: 18px;
+}
+.woocommerce-shop #main .products .product .price .amount {
+  font-size: 20px;
+  color: #000;
+}
+.woocommerce-shop #main .products .product .price .woocommerce-price-suffix {
+  display: none;
+}
+.woocommerce-shop #main .products .product .add_to_cart_button {
+  background: transparent;
+  border: 2px solid #000;
+  border-radius: 25px;
+  color: #000;
+  width: 100%;
+}
+
 @media screen and (min-width: 768px) {
   .single-product #main .product .woocommerce-product-gallery {
     width: 58%;
