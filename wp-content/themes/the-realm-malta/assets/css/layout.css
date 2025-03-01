@@ -1,18 +1,31 @@
-.woocommerce-shop #main .products .product img {
+.woocommerce-shop #main .products .product img,
+.tax-product_cat #main .products .product img {
   border: 2px solid #000;
   border-radius: 10px;
 }
-.woocommerce-shop #main .products .product .woocommerce-loop-product__title {
+.woocommerce-shop #main .products .product .woocommerce-loop-product__title,
+.woocommerce-shop #main .products .product .woocommerce-loop-category__title,
+.tax-product_cat #main .products .product .woocommerce-loop-product__title,
+.tax-product_cat #main .products .product .woocommerce-loop-category__title {
   font-size: 18px;
 }
-.woocommerce-shop #main .products .product .price .amount {
+.woocommerce-shop #main .products .product .woocommerce-loop-product__title .count,
+.woocommerce-shop #main .products .product .woocommerce-loop-category__title .count,
+.tax-product_cat #main .products .product .woocommerce-loop-product__title .count,
+.tax-product_cat #main .products .product .woocommerce-loop-category__title .count {
+  display: none;
+}
+.woocommerce-shop #main .products .product .price .amount,
+.tax-product_cat #main .products .product .price .amount {
   font-size: 20px;
   color: #000;
 }
-.woocommerce-shop #main .products .product .price .woocommerce-price-suffix {
+.woocommerce-shop #main .products .product .price .woocommerce-price-suffix,
+.tax-product_cat #main .products .product .price .woocommerce-price-suffix {
   display: none;
 }
-.woocommerce-shop #main .products .product .add_to_cart_button {
+.woocommerce-shop #main .products .product .add_to_cart_button,
+.tax-product_cat #main .products .product .add_to_cart_button {
   background: transparent;
   border: 2px solid #000;
   border-radius: 25px;

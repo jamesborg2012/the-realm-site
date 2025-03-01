@@ -1,4 +1,5 @@
-.woocommerce-shop {
+.woocommerce-shop,
+.tax-product_cat {
     #main {
         .products {
             .product {
@@ -7,8 +8,12 @@
                     border-radius: 10px;
                 }
 
-                .woocommerce-loop-product__title {
+                .woocommerce-loop-product__title,
+                .woocommerce-loop-category__title {
                     font-size: 18px;
+                    .count {
+                        display: none;
+                    }
                 }
 
                 .price {
