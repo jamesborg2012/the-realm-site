@@ -4,9 +4,9 @@ if (!defined('ABSPATH')) {
     die('ACCESS_DENIED');
 }
 
-class Realm_Members_Manager_Core
+class Realm_Gw_Excel_Uploader_Core
 {
-    const PREFIX = 'rmm_';
+    const PREFIX = 'gweu_';
 
     protected $modules;
 
@@ -15,60 +15,32 @@ class Realm_Members_Manager_Core
     public function __construct()
     {
         add_action('admin_enqueue_scripts', [$this, 'load_admin_resources']);
-        add_action('wp_enqueue_scripts', [$this, 'load_public_resources']);
 
         $this->modules = array(
-            'Members_Manager' => Members_Manager::get_instance(),
-            'RMM_Admin_Ajax_Handler' => RMM_Admin_Ajax_Handler::get_instance(),
-            'RMM_Ajax_Handler' => RMM_Ajax_Handler::get_instance(),
-            'RMM_WC_Hooks_Handler' => RMM_WC_Hooks_Handler::get_instance(),
+            'GWEU_Pages' => GWEU_Pages::get_instance(),
         );
     }
 
     public function load_admin_resources()
     {
-        $version = time();
         wp_register_script(
             self::PREFIX . 'admin_scripts',
             plugins_url('assets/js/admin-scripts.js', dirname(__FILE__)),
             array('jquery'),
-            $version,
+            '0.0.1',
             true
         );
 
         wp_localize_script(
             self::PREFIX . 'admin_scripts',
-            'rmmAjaxObj',
+            'gweuAjaxObj',
             array(
                 'ajaxUrl' => admin_url('admin-ajax.php'),
-                'ajaxNonce' => wp_create_nonce(),
+                'ajaxNonce' => wp_create_nonce('load_all_posts_nonce'),
             )
         );
 
         wp_enqueue_script(self::PREFIX . 'admin_scripts');
-    }
-
-    public function load_public_resources()
-    {
-        $version = time();
-        wp_register_script(
-            self::PREFIX . 'scripts',
-            plugins_url('assets/js/rmm-scripts.js', dirname(__FILE__)),
-            array('jquery'),
-            $version,
-            true
-        );
-
-        wp_localize_script(
-            self::PREFIX . 'scripts',
-            'rmmAjaxObj',
-            array(
-                'ajaxUrl' => admin_url('admin-ajax.php'),
-                'ajaxNonce' => wp_create_nonce(),
-            )
-        );
-
-        wp_enqueue_script(self::PREFIX . 'scripts');
     }
 
     /**

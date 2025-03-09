@@ -74,7 +74,9 @@ class Members_Manager extends Realm_Members_Manager_Core
         echo $this->render_template(
             'admin/partials/user-members-meta',
             [
-                'user_membership_status' => get_user_meta($user->ID, 'rmm_membership_status', true)
+                'rmm_membership_status' => get_user_meta($user->ID, 'rmm_membership_status', true),
+                'rmm_membership_number' => get_user_meta($user->ID, 'rmm_membership_number', true),
+                'rmm_membership_expire' => get_user_meta($user->ID, 'rmm_membership_expire', true)
             ]
         );
     }
@@ -82,6 +84,11 @@ class Members_Manager extends Realm_Members_Manager_Core
     public function save_members_meta_fields($user_id)
     {
         $membership_status = $_POST['rmm_membership_status'] ?? 'not_active';
+        $membership_status = $_POST['rmm_membership_number'] ?? '';
+        $membership_status = $_POST['rmm_membership_expire'] ?? '';
+
         update_user_meta($user_id, 'rmm_membership_status', $membership_status);
+        update_user_meta($user_id, 'rmm_membership_number', $membership_status);
+        update_user_meta($user_id, 'rmm_membership_expire', $membership_status);
     }
 }

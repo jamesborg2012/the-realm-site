@@ -19,8 +19,9 @@ define('RMM_REQUIRED_WP_VERSION',  '6.0');
 if (verify_requirements_met()) {
     require('includes/realm-members-manager-core.php');
     require('includes/classes/members-manager.php');
-    require('includes/classes/admin_ajax_handler.php');
-    // require('includes/controllers/operators-controller.php');
+    require('includes/classes/admin-ajax-handler.php');
+    require('includes/classes/rmm-ajax-handler.php');
+    require('includes/classes/wc-hooks-handler.php');
 
     if (class_exists('Realm_Members_Manager_Core')) {
         $GLOBALS['op'] = Realm_Members_Manager_Core::get_instance();
