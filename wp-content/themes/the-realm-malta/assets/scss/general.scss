@@ -1,0 +1,19 @@
+@use "variables";
+
+body {
+    #page {
+        .col-full {
+            @media screen and (min-width: 768px) {
+                max-width: 75% !important;
+            }
+        }
+
+        .storefront-breadcrumb {
+            display: none;
+        }
+
+        #main {
+            margin-top: 25px;
+        }
+    }
+}

@@ -3,6 +3,6 @@
 
     <div class="membership-number-form-container">
         <input type="text" name="membership-number" id="membership-number" placeholder="123456">
-        <button class="button membership-number-btn submit-membership-number" type="button">Apply</button>
+        <button class="button membership-number-btn submit-membership-number" type="button">Apply Member Discount</button>
     </div>
 </div>

@@ -1,0 +1,30 @@
+@use "variables";
+
+#site-navigation {
+    .mega-menu-wrap {
+        #mega-menu-primary {
+            background: #fff;
+            & > li {
+                &.mega-menu-item {
+                    .mega-menu-link {
+                        color: variables.$base-black-color;
+                        &:hover {
+                            // background: #fff;
+                        }
+                    }
+                }
+
+                &.mega-menu-megamenu {
+                    & > .mega-sub-menu {
+                        border: 1px solid variables.$base-black-color;
+                        // border-top: none;
+                    }
+                    .mega-sub-menu {
+                        background: #fff;
+                        color: variables.$base-black-color;
+                    }
+                }
+            }
+        }
+    }
+}

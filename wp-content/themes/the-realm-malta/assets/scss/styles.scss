@@ -1,2 +1,6 @@
-@use "wc-shop" as wc-shop;
-@use "wc-single-product" as wc-single-product;
+@use "variables";
+@use "general";
+@use "mega-menu";
+@use "wc-shop";
+@use "wc-cart";
+@use "wc-single-product";

@@ -16,6 +16,7 @@ class TRM_WC_Hooks extends TRM_Core
     public function register_hook_callbacks()
     {
         add_action('woocommerce_checkout_order_processed', [$this, 'check_marketing_order'], 99, 3);
+        add_filter('storefront_credit_link', '__return_false');
     }
 
     public function check_marketing_order($order_id, $posted_args, $order)

@@ -1,10 +1,12 @@
+@use "variables";
+
 .woocommerce-shop,
 .tax-product_cat {
     #main {
         .products {
             .product {
                 img {
-                    border: 2px solid #000;
+                    border: 2px solid variables.$base-black-color;
                     border-radius: 10px;
                 }
 

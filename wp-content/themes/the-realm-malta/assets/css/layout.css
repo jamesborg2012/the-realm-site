@@ -1,3 +1,29 @@
+@media screen and (min-width: 768px) {
+  body #page .col-full {
+    max-width: 75% !important;
+  }
+}
+body #page .storefront-breadcrumb {
+  display: none;
+}
+body #page #main {
+  margin-top: 25px;
+}
+
+#site-navigation .mega-menu-wrap #mega-menu-primary {
+  background: #fff;
+}
+#site-navigation .mega-menu-wrap #mega-menu-primary > li.mega-menu-item .mega-menu-link {
+  color: #000;
+}
+#site-navigation .mega-menu-wrap #mega-menu-primary > li.mega-menu-megamenu > .mega-sub-menu {
+  border: 1px solid #000;
+}
+#site-navigation .mega-menu-wrap #mega-menu-primary > li.mega-menu-megamenu .mega-sub-menu {
+  background: #fff;
+  color: #000;
+}
+
 .woocommerce-shop #main .products .product img,
 .tax-product_cat #main .products .product img {
   border: 2px solid #000;
@@ -31,6 +57,30 @@
   border-radius: 25px;
   color: #000;
   width: 100%;
+}
+
+body.woocommerce-cart .wc-cart-container {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 auto 16px;
+  position: relative;
+  justify-content: center;
+}
+body.woocommerce-cart .wc-cart-container .woocommerce-cart-form {
+  width: 65%;
+}
+body.woocommerce-cart .wc-cart-container .cart-collaterals {
+  flex: 1 0 0%;
+  padding-left: 25px;
+}
+@media screen and (min-width: 768px) {
+  body.woocommerce-cart .cart-collaterals .cart_totals {
+    float: none;
+    width: 100%;
+  }
+}
+body.woocommerce-cart .cart-collaterals .cart_totals .checkout-button {
+  background-color: #000;
 }
 
 @media screen and (min-width: 768px) {
