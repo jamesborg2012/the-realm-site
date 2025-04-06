@@ -9,7 +9,6 @@ if (!empty($_POST)) {
 
 ?>
 
-
 <h1>GW Excel Uploader</h1>
 <h3>Use this page to upload GW Excels to put products in the website</h3>
 <span>Make sure the files are of type CSV</span>

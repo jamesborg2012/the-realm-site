@@ -29,6 +29,15 @@ class Members_Manager extends Realm_Members_Manager_Core
             'realm-members',
             [$this, 'render_realm_members_page']
         );
+
+        add_submenu_page(
+            'realm-members',
+            'Bulk Import Members',
+            'Bulk Import Members',
+            'manage_woocommerce',
+            'rmm-import-members',
+            [$this, 'render_import_members_page']
+        );
     }
 
     /**
@@ -47,7 +56,7 @@ class Members_Manager extends Realm_Members_Manager_Core
          * @var WP_User $site_user
          */
         foreach ($site_users as $site_user) {
-            $member_number = get_user_meta($site_user->ID, 'rmm_member_number', true);
+            $member_number = get_user_meta($site_user->ID, 'rmm_membership_number', true);
             $expires_at = get_user_meta($site_user->ID, 'rmm_membership_expires', true);
 
             $users_data[] = [
@@ -84,11 +93,18 @@ class Members_Manager extends Realm_Members_Manager_Core
     public function save_members_meta_fields($user_id)
     {
         $membership_status = $_POST['rmm_membership_status'] ?? 'not_active';
-        $membership_status = $_POST['rmm_membership_number'] ?? '';
-        $membership_status = $_POST['rmm_membership_expire'] ?? '';
+        $membership_number = $_POST['rmm_membership_number'] ?? '';
+        $membership_expire = $_POST['rmm_membership_expire'] ?? '';
 
         update_user_meta($user_id, 'rmm_membership_status', $membership_status);
-        update_user_meta($user_id, 'rmm_membership_number', $membership_status);
-        update_user_meta($user_id, 'rmm_membership_expire', $membership_status);
+        update_user_meta($user_id, 'rmm_membership_number', $membership_number);
+        update_user_meta($user_id, 'rmm_membership_expire', $membership_expire);
+    }
+
+    public function render_import_members_page()
+    {
+        echo $this->render_template(
+            'admin/bulk-import-members-page'
+        );
     }
 }

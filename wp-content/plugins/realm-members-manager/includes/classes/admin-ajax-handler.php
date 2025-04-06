@@ -73,7 +73,6 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
         $coupon->set_discount_type('percent');
         $coupon->set_amount(20);
         $coupon->set_date_expires($coupon_expiry_date);
-        $coupon->set_email_restrictions([$member_data['member_email']]);
 
         //TODO - Exclude Online Only Category
 
@@ -87,7 +86,6 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
         $coupon->set_discount_type('percent');
         $coupon->set_amount(10);
         $coupon->set_date_expires($coupon_expiry_date);
-        $coupon->set_email_restrictions([$member_data['member_email']]);
 
         //TODO - Include Online Only Category
 
