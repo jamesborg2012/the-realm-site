@@ -26,6 +26,24 @@ class TRM_MB_Hooks extends TRM_Core
                     'options' => [
                         '' => ''
                     ]
+                ],
+                [
+                    'name' => 'Previous Product Codes',
+                    'id' => 'trm_gw_old_product_codes',
+                    'type' => 'text_list',
+                    'clone' => true,
+                    'options' => [
+                        '' => ''
+                    ]
+                ],
+                [
+                    'name' => 'Previous SSC Codes',
+                    'id' => 'trm_gw_old_ssc_codes',
+                    'type' => 'text_list',
+                    'clone' => true,
+                    'options' => [
+                        '' => ''
+                    ]
                 ]
             ],
         ];
