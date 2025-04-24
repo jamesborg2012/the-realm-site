@@ -22,8 +22,13 @@ class TRM_WC_Hooks extends TRM_Core
         add_action('woocommerce_process_product_meta', [$this, 'save_custom_product_data_fields']);
 
         add_filter('woocommerce_product_import_pre_insert_product_object', [$this, 'handle_custom_product_import'], 99, 2);
+
+        add_filter('woocommerce_coupon_message', [$this, 'update_coupon_message_member'], 99, 3);
     }
 
+    /**
+     * Checks if the order is for a marketing purchase
+     */
     public function check_marketing_order($order_id, $posted_args, $order)
     {
         $order_user = $order->get_user_id();
@@ -40,6 +45,9 @@ class TRM_WC_Hooks extends TRM_Core
         }
     }
 
+    /**
+     * Adds custom fields to the WC product data
+     */
     public function add_custom_product_data_fields()
     {
         woocommerce_wp_text_input(
@@ -61,6 +69,9 @@ class TRM_WC_Hooks extends TRM_Core
         );
     }
 
+    /**
+     * Saves custom fields created for WC Product Data
+     */
     public function save_custom_product_data_fields($post_id)
     {
         $custom_field_keys = [
@@ -142,5 +153,23 @@ class TRM_WC_Hooks extends TRM_Core
         }
 
         return $object;
+    }
+
+    /**
+     * Changes text of coupon message for member discounts
+     */
+    public function update_coupon_message_member($message, $message_code, WC_Coupon $coupon)
+    {
+        $coupon_data = $coupon->get_data();
+
+        if (strpos($coupon_data['code'], 'storedisc') !== false || strpos($coupon_data['code'], 'onlineonly') !== false) {
+            if ($message_code == 200) {
+                $message = 'Member Discount Applied!';
+            } elseif ($message_code == 201) {
+                $message = 'Member Discount Removed!';
+            }
+        }
+
+        return $message;
     }
 }

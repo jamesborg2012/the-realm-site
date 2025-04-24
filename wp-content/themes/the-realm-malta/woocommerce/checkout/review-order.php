@@ -23,10 +23,16 @@ foreach (WC()->cart->get_coupons() as $code => $coupon) {
 	$total_discount += WC()->cart->get_coupon_discount_amount($coupon->get_code(), WC()->cart->display_cart_ex_tax);
 }
 
+$current_user = wp_get_current_user();
+$show_remove_coupon = $current_user->id > 0 && !in_array('customer', $current_user->roles);
 
 $discount_html = "";
 if ($total_discount > 0) {
-	$discount_html = "- " . wc_price($total_discount) . ' <a href="' . esc_url(add_query_arg('remove_coupon', rawurlencode($coupon->get_code()), wc_get_checkout_url())) . '" class="woocommerce-remove-coupon" data-coupon="' . esc_attr($coupon->get_code()) . '">' . __('[Remove]', 'woocommerce') . '</a>';
+	$discount_html = "- " . wc_price($total_discount);
+
+	if ($show_remove_coupon) {
+		$discount_html .= ' <a href="' . esc_url(add_query_arg('remove_coupon', rawurlencode($coupon->get_code()), wc_get_checkout_url())) . '" class="woocommerce-remove-coupon" data-coupon="' . esc_attr($coupon->get_code()) . '">' . __('[Remove]', 'woocommerce') . '</a>';
+	}
 }
 
 ?>
