@@ -46,6 +46,15 @@ class Realm_Members_Manager_Core
         );
 
         wp_enqueue_script(self::PREFIX . 'admin_scripts');
+
+        wp_register_style(
+            self::PREFIX . 'admin_styles',
+            plugins_url('assets/css/admin.css', dirname(__FILE__)),
+            [],
+            $version
+        );
+
+        wp_enqueue_style(self::PREFIX . 'admin_styles');
     }
 
     public function load_public_resources()

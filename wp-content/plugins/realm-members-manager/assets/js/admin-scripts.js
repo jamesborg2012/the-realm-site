@@ -8,18 +8,24 @@ function adminScriptsWrapper ($) {
       $('.show-new-member-modal').click(adminScripts.enableNewMemberModal)
       $('.manage-member-btn').click(adminScripts.enableMemberModal)
       $('.create-member').click(adminScripts.createNewMember)
+      $('.modal-close-button').click(adminScripts.closeModal)
     },
 
     enableNewMemberModal: function (e) {
       e.preventDefault()
 
-      $(document).find('#create-user-modal').addClass('enable-modal')
+      var buttonClicked = $(this)
+      var settingsPage = buttonClicked.closest('#wpbody')
+
+      settingsPage.find('#create-user-modal').addClass('enable-modal')
+      settingsPage.closest('body').addClass('modal-open')
     },
 
     enableMemberModal: function (e) {
       e.preventDefault()
 
       var buttonClicked = $(this)
+      var settingsPage = buttonClicked.closest('#wpbody')
 
       var userId = buttonClicked.attr('data-user-id')
 
@@ -33,9 +39,10 @@ function adminScriptsWrapper ($) {
         },
         success: function (response) {
           if (response.success) {
-            $(document)
-              .find('.member-manage-modal .modal-content')
-              .html(response.data.content)
+            var modal = settingsPage.find('#manage-member-modal')
+            modal.addClass('enable-modal')
+            modal.find('.modal-content').html(response.data.content)
+            modal.closest('body').addClass('modal-open')
           }
         }
       })
@@ -65,6 +72,15 @@ function adminScriptsWrapper ($) {
         },
         success: function (response) {}
       })
+    },
+
+    closeModal: function (e) {
+      e.preventDefault()
+
+      var closeButton = $(this)
+      var modal = closeButton.closest('.rmm-modal')
+      modal.removeClass('enable-modal')
+      modal.closest('body').removeClass('modal-open')
     }
   }
 
