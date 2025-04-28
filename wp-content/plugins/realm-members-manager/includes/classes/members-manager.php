@@ -73,7 +73,7 @@ class Members_Manager extends Realm_Members_Manager_Core
                 'email' => $site_user->user_email,
                 'phone' => get_user_meta($site_user->ID, 'billing_phone', true),
                 'is_member' => $member_status == 'active' ? 'Member' : 'Not a Member',
-                'expires_at' => $expires_at == '' ? 'N/A' : $expires_at,
+                'expires_at' => $expires_at == '' ? 'N/A' : date('d/m/Y', strtotime($expires_at)),
                 'is_member_flag' => $is_member_flag
             ];
         }

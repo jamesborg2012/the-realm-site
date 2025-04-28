@@ -75,7 +75,6 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
                 continue;
             }
 
-
             $brand = reset($brands);
             if ($brand->slug == 'online-only') {
                 $has_online_only = true;
