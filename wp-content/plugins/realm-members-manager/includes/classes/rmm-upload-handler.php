@@ -83,11 +83,16 @@ class RMM_Upload_Handler
                 update_user_meta($user->id, 'billing_phone', $row['mobile_number']);
                 update_user_meta($user->id, 'rmm_membership_number', $row['member_number']);
                 update_user_meta($user->id, 'rmm_membership_status', 'active');
-                update_user_meta($user->id, 'rmm_membership_expiry', $row['expire']);
 
                 $expire_date = str_replace('/', '-', $row['expire']);
                 $expire_date_ts = strtotime($expire_date);
+
+                $expire_date = date('Y-m-d', $expire_date_ts);
                 $coupon_expiry_date = date('Y-m-d', $expire_date_ts);
+
+                update_user_meta($user->id, 'rmm_membership_expiry', $expire_date);
+
+                $online_only_brand = get_term_by('slug', 'online-only', 'product_brand');
 
                 $coupon = new WC_Coupon();
 
@@ -95,10 +100,22 @@ class RMM_Upload_Handler
                 $coupon->set_discount_type('percent');
                 $coupon->set_amount(20);
                 $coupon->set_date_expires($coupon_expiry_date);
+                $coupon->add_meta_data('exclude_product_brands', [$online_only_brand->term_id]);
 
                 $coupon->save();
 
                 update_user_meta($user->id, 'rmm_membership_store_coupon', $coupon->get_id());
+
+                $coupon = new WC_Coupon();
+
+                $coupon->set_code($row['member_number'] . 'ONLINEONLY');
+                $coupon->set_discount_type('percent');
+                $coupon->set_amount(10);
+                $coupon->set_date_expires($coupon_expiry_date);
+                $coupon->add_meta_data('product_brands', [$online_only_brand->term_id]);
+                $coupon->save();
+
+                update_user_meta($user->id, 'rmm_membership_online_coupon', $coupon->get_id());
             }
         }
     }

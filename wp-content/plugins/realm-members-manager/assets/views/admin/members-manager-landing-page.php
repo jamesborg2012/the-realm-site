@@ -79,6 +79,19 @@
                 <input name="rmm_member_phone" id="rmm_member_phone">
             </label>
         </div>
+        <div class="member-status-container input-container">
+            <label>
+                Member Status:
+                <select name="rmm_member_status" id="rmm_member_status">
+                    <option value="active" selected>Active</option>
+                    <option value="not_active">Not Active</option>
+                </select>
+            </label>
+            <label>
+                Expiration Date:
+                <input name="rmm_membership_expire" id="rmm_membership_expire">
+            </label>
+        </div>
         <div class="button-container">
             <button type="button" class="button button-primary create-member">Create Member</button>
         </div>

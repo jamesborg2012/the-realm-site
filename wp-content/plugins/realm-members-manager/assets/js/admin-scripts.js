@@ -59,7 +59,9 @@ function adminScriptsWrapper ($) {
         member_name: modal.find('#rmm_member_name').val(),
         member_surname: modal.find('#rmm_member_surname').val(),
         member_email: modal.find('#rmm_member_email').val(),
-        member_phone: modal.find('#rmm_member_phone').val()
+        member_phone: modal.find('#rmm_member_phone').val(),
+        member_status: modal.find('#rmm_member_status').val(),
+        member_expiry_date: modal.find('#rmm_membership_expire').val()
       }
 
       $.ajax({
@@ -70,7 +72,17 @@ function adminScriptsWrapper ($) {
           member_data: memberData,
           nonce: rmmAjaxObj.ajaxNonce
         },
-        success: function (response) {}
+        success: function (response) {
+          if (response.data.message) {
+            alert(response.data.message)
+          } else {
+            if (response.success) {
+              alert('Member successfully created!')
+            } else {
+              alert('Something went wrong, please try again!')
+            }
+          }
+        }
       })
     },
 
