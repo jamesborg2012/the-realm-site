@@ -20,8 +20,15 @@ class TRM_WC_Hooks extends TRM_Core
 
         add_action('woocommerce_product_options_inventory_product_data', [$this, 'add_custom_product_data_fields']);
         add_action('woocommerce_process_product_meta', [$this, 'save_custom_product_data_fields']);
+
+        add_filter('woocommerce_product_import_pre_insert_product_object', [$this, 'handle_custom_product_import'], 99, 2);
+
+        add_filter('woocommerce_coupon_message', [$this, 'update_coupon_message_member'], 99, 3);
     }
 
+    /**
+     * Checks if the order is for a marketing purchase
+     */
     public function check_marketing_order($order_id, $posted_args, $order)
     {
         $order_user = $order->get_user_id();
@@ -38,6 +45,9 @@ class TRM_WC_Hooks extends TRM_Core
         }
     }
 
+    /**
+     * Adds custom fields to the WC product data
+     */
     public function add_custom_product_data_fields()
     {
         woocommerce_wp_text_input(
@@ -59,6 +69,9 @@ class TRM_WC_Hooks extends TRM_Core
         );
     }
 
+    /**
+     * Saves custom fields created for WC Product Data
+     */
     public function save_custom_product_data_fields($post_id)
     {
         $custom_field_keys = [
@@ -71,5 +84,92 @@ class TRM_WC_Hooks extends TRM_Core
                 update_post_meta($post_id, $custom_field_key, $_POST[$custom_field_key]);
             }
         }
+    }
+
+    /**
+     * Handles custom fields in the CSV that can be imported as per data requirments
+     */
+    public function handle_custom_product_import(WC_Product $object, $data)
+    {
+        $custom_fields = [
+            'product_code' => '_product_code',
+            'ssc_code' => '_ssc_code'
+        ];
+
+        if (!empty($data['meta_data'])) {
+            foreach ($data['meta_data'] as $meta_data) {
+
+                //Custom product category setting
+                if ($meta_data['key'] == 'category' && !empty($meta_data['value'])) {
+                    $term_ids = [];
+
+                    $content = html_entity_decode($meta_data['value']);
+                    $content = str_replace(['; ', ' ;'], ';', $content);
+
+                    $term_rows = explode(';', $content);
+
+                    foreach ($term_rows as $term_row) {
+                        $parent = null;
+                        $_terms = array_map('trim', explode('>', $term_row));
+
+                        foreach ($_terms as $_term) {
+                            $term = wp_insert_term($_term, 'product_cat', array('parent' => intval($parent)));
+
+                            if (is_wp_error($term)) {
+                                if ($term->get_error_code() === 'term_exists') {
+                                    // When term exists, error data should contain existing term id.
+                                    $term_id = $term->get_error_data();
+                                } else {
+                                    break; // We cannot continue on any other error.
+                                }
+                            } else {
+                                // New term.
+                                $term_id = $term['term_id'];
+                            }
+
+                            //If the term has not already been added do so now
+                            if (!in_array($term_id, $term_ids)) {
+                                $term_ids[] = $term_id;
+                            }
+
+                            //Always set the term as the next parent
+                            $parent = $term_id;
+                        }
+                    }
+
+                    //Setting the custom product categories
+                    $object->set_category_ids($term_ids);
+                    continue;
+                }
+
+
+                $meta_key = $custom_fields[$meta_data['key']] ?? '';
+
+                //Setting custom meta data
+                if (!empty($meta_key)) {
+                    $object->update_meta_data($meta_key, $meta_data['value']);
+                }
+            }
+        }
+
+        return $object;
+    }
+
+    /**
+     * Changes text of coupon message for member discounts
+     */
+    public function update_coupon_message_member($message, $message_code, WC_Coupon $coupon)
+    {
+        $coupon_data = $coupon->get_data();
+
+        if (strpos($coupon_data['code'], 'storedisc') !== false || strpos($coupon_data['code'], 'onlineonly') !== false) {
+            if ($message_code == 200) {
+                $message = 'Member Discount Applied!';
+            } elseif ($message_code == 201) {
+                $message = 'Member Discount Removed!';
+            }
+        }
+
+        return $message;
     }
 }

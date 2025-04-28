@@ -37,7 +37,7 @@ foreach ($marketing_users as $marketing_user) {
     <div class="title-container">
         <h1>The Realm - Marketing Related</h1>
     </div>
-    <table class="marketing-purchases">
+    <table class="marketing-purchases" width="70%">
         <thead>
             <tr>
                 <th>Date</th>
@@ -53,7 +53,7 @@ foreach ($marketing_users as $marketing_user) {
                     <td><?= $table_row['date'] ?></td>
                     <td><?= $table_row['item'] ?></td>
                     <td><?= $table_row['quantity'] ?></td>
-                    <td><a href="<?= $table_row['order'] ?>">Access Order</a></td>
+                    <td><a class='order-button' href="<?= $table_row['order'] ?>">ACCESS ORDER</a></td>
                     <td><?= $table_row['total'] ?></td>
                 </tr>
             <?php endforeach; ?>

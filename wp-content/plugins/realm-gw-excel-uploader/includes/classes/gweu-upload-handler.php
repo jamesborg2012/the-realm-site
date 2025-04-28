@@ -30,6 +30,9 @@ class Realm_GWEU_Upload_Handler
                 'new_sku' => $contents[1],
                 'product_code' => $contents[2],
                 'ssc_code' => $contents[3],
+                'old_barcode' => $contents[4],
+                'old_product_code' => $contents[5],
+                'old_ssc_code' => $contents[6],
             ];
         }
 
@@ -51,21 +54,9 @@ class Realm_GWEU_Upload_Handler
             $old_product_codes = $product->get_meta('trm_gw_old_product_codes', true);
             $old_ssc_codes = $product->get_meta('trm_gw_old_ssc_codes', true);
 
-            if (empty($old_barcodes)) {
-                $old_barcodes = [];
-            }
-
-            if (empty($old_product_codes)) {
-                $old_product_codes = [];
-            }
-
-            if (empty($old_ssc_codes)) {
-                $old_ssc_codes = [];
-            }
-
-            $old_barcodes[] = [$product_sku];
-            $old_product_codes[] = [$product_code];
-            $old_ssc_codes[] = [$ssc_code];
+            $old_barcodes = $this->update_old_codes($row['old_barcode'], $old_barcodes);
+            $old_product_codes = $this->update_old_codes($row['old_product_code'], $old_product_codes);
+            $old_ssc_codes = $this->update_old_codes($row['old_ssc_code'], $old_ssc_codes);
 
             $product->set_sku($row['new_sku']);
             $product->update_meta_data('_product_code', $row['product_code']);
@@ -77,5 +68,32 @@ class Realm_GWEU_Upload_Handler
 
             $product->save();
         }
+    }
+
+    /**
+     * Updates the existing old meta codes with additional ones from the CSV
+     */
+    private function update_old_codes($csv_codes, $meta_codes): array
+    {
+        if (empty($meta_codes)) {
+            $meta_codes = [];
+        }
+
+        $lookup = array_flip(array_map('serialize', $meta_codes));
+
+        $codes = str_replace(['; ', ' ;'], ';', $csv_codes);
+        $codes = explode(';', $csv_codes);
+
+        foreach ($codes as $code) {
+            $needle = serialize($code);
+
+            if (isset($lookup[$needle])) {
+                continue;
+            }
+
+            $meta_codes[] = [$code];
+        }
+
+        return $meta_codes;
     }
 }

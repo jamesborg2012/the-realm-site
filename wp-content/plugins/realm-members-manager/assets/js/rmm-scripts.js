@@ -30,8 +30,14 @@ function rmmScriptsWrapper ($) {
           nonce: rmmAjaxObj.ajaxNonce
         },
         success: function (response) {
+          console.log(response)
           if (response.success) {
             $(document.body).trigger('update_checkout')
+          } else {
+            var data = response.data
+            var status = data.status
+
+            alert(data.message)
           }
         }
       })

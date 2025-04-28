@@ -10,9 +10,17 @@ new TRM_Marketing_Handler();
 new TRM_WC_Hooks();
 new TRM_MB_Hooks();
 
-function wpse_load_parent_stylesheets()
+function trm_load_parent_stylesheets()
 {
     $version = time();
     wp_enqueue_style('site-layout', get_stylesheet_directory_uri() . '/assets/css/layout.css', [], $version);
 }
-add_action('wp_enqueue_scripts', 'wpse_load_parent_stylesheets');
+add_action('wp_enqueue_scripts', 'trm_load_parent_stylesheets');
+
+add_action('admin_enqueue_scripts', 'trm_load_admin_scripts');
+
+function trm_load_admin_scripts()
+{
+    $version = time();
+    wp_enqueue_style('admin-styles', get_stylesheet_directory_uri() . '/assets/css/admin/admin.css', [], $version);
+}

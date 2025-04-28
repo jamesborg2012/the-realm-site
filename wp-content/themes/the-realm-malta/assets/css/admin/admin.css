@@ -1,0 +1,39 @@
+.marketing-purchases {
+    width: 70%;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+    text-align: center;
+}
+
+.marketing-purchases th, 
+.marketing-purchases td {
+    padding: 1rem;
+    background: #fff;
+    border: 1px solid #ddd;
+    vertical-align: middle;
+    font-size: 1rem;
+}
+
+.marketing-purchases thead th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* Button styling */
+.order-button {
+    background-color: #0073aa;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    text-decoration: none;
+}
+
+.order-button:hover {
+    background-color: #005f8d;
+    color: #fff;
+}

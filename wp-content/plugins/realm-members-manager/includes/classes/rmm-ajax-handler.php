@@ -12,6 +12,9 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
         add_action('wp_ajax_nopriv_apply_membership_number', [$this, 'apply_membership_discounts']);
     }
 
+    /**
+     * Applies membership discounts
+     */
     public function apply_membership_discounts()
     {
         WC()->session->set('member_number', '');
@@ -19,8 +22,10 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
         $membership_number = $_POST['member_number'] ?? '';
 
         if (empty($membership_number)) {
-            //TODO
-            wp_send_json_error([]);
+            wp_send_json_error([
+                'status' => 'error',
+                'message' => 'No member number provided!'
+            ]);
         }
 
         global $woocommerce;
@@ -36,20 +41,21 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
         ]);
 
         if (empty($result)) {
-            //TODO
-            wp_send_json_error([]);
+            wp_send_json_error([
+                'status' => 'error',
+                'message' => 'Number provided does not belong to existing member!'
+            ]);
         }
 
         $user = reset($result);
         $is_active = get_user_meta($user->ID, 'rmm_membership_status', true) == 'active';
         $expire = get_user_meta($user->ID, 'rmm_membership_expire', true);
 
-        $this->write_log($user->ID);
-        $this->write_log($is_active);
-        $this->write_log($expire);
-
         if (!$is_active || ($is_active && strtotime($expire) < strtotime('now'))) {
-            wp_send_json_error([]);
+            wp_send_json_error([
+                'status' => 'error',
+                'message' => 'Customer membership expired or customer is no longer a member!'
+            ]);
         }
 
         $items = $woocommerce->cart->get_cart();
@@ -62,7 +68,6 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
             }
 
             $product = $values['data'];
-            // $this->write_log($product);
             $brands = get_the_terms($product->get_id(), 'product_brand');
 
             if ($brands === false) {
@@ -86,6 +91,8 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
             $woocommerce->cart->add_discount(sanitize_text_field($membership_number . "onlineonly"));
         }
 
-        wp_send_json_success([]);
+        wp_send_json_success([
+            'status' => 'success'
+        ]);
     }
 }
