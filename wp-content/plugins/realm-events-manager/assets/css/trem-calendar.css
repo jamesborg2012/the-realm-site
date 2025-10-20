@@ -1,0 +1,141 @@
+/* === The Realm Events Manager - Calendar Styles === */
+.trem-calendar {
+  margin: 2rem 0;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+}
+
+.trem-calendar__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.trem-calendar__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.trem-calendar__table th,
+.trem-calendar__table td {
+  border: 1px solid #ddd;
+  padding: 0.5rem;
+  vertical-align: top;
+  height: 100px;
+}
+
+.trem-calendar__table th {
+  background: #f5f5f5;
+  font-weight: 600;
+}
+
+.trem-calendar__day {
+  background: #fafafa;
+  position: relative;
+}
+
+.trem-calendar__date {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.trem-calendar__events {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  text-align: left;
+}
+
+.trem-calendar__events li {
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+.trem-calendar__events a {
+  color: #0073aa;
+  text-decoration: none;
+}
+
+.trem-calendar__events a:hover {
+  text-decoration: underline;
+}
+
+.trem-calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.trem-calendar__nav {
+  background: #0073aa;
+  color: #fff;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.trem-calendar__nav:hover {
+  background: #005f8a;
+}
+
+.trem-calendar--loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* === Single Event Details === */
+.trem-event-details {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #ddd;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  text-align: left;
+}
+
+.trem-event-details__image img {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.trem-event-details__title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: .75rem;
+}
+
+.trem-event-details__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: .75rem;
+  font-size: 0.95rem;
+}
+
+.trem-event-details__info p {
+  margin: .25rem 0;
+}
+
+.trem-button {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: background .2s ease;
+}
+
+.trem-button--primary {
+  background: #0073aa;
+  color: #fff;
+}
+
+.trem-button--primary:hover {
+  background: #005f8a;
+}
