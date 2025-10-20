@@ -20,6 +20,11 @@
     color: #fff;
 }
 
+.rmm-members-table .member-row.new-member {
+    background-color: #FFCC00;
+    color: #fff;
+}
+
 /* Base styles for the modal (hidden by default) */
 .rmm-modal {
     position: fixed;

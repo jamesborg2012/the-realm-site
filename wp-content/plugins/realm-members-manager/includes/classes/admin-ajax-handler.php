@@ -43,6 +43,9 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
     {
         $member_data = isset($_POST['member_data']) ? $_POST['member_data'] : [];
 
+        $store_discount = get_option('rmm_member_store_discount', 18);
+        $online_discount = get_option('rmm_member_online_discount', 8);
+
         //TODO
         if (empty($member_data)) {
             wp_send_json_error([
@@ -91,7 +94,7 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
 
             $coupon->set_code($member_number . 'STOREDISC');
             $coupon->set_discount_type('percent');
-            $coupon->set_amount(20);
+            $coupon->set_amount($store_discount);
             $coupon->set_date_expires($coupon_expiry_date);
             $coupon->add_meta_data('exclude_product_brands', [$online_only_brand->term_id]);
             $coupon->save();
@@ -102,7 +105,7 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
 
             $coupon->set_code($member_number . 'ONLINEONLY');
             $coupon->set_discount_type('percent');
-            $coupon->set_amount(10);
+            $coupon->set_amount($online_discount);
             $coupon->set_date_expires($coupon_expiry_date);
             $coupon->add_meta_data('product_brands', [$online_only_brand->term_id]);
             $coupon->save();

@@ -1,0 +1,21 @@
+.rbs-wrap { max-width: 760px; }
+#rbs-video { width: 100%; border-radius: 12px; background: #000; }
+#rbs-start, #rbs-stop { padding: 10px 14px; margin: 8px 6px; }
+#rbs-result { margin-top: 12px; font-weight: 600; }
+#rbs-log { margin-top: 8px; font-size: 12px; color: #555; max-height: 180px; overflow: auto; }
+.hidden { display: none; }
+.rbs-controls select, .rbs-controls input { margin-left: 6px; margin-right: 16px; }
+
+#rbs-product-panel.hidden { display:none; }
+#rbs-product-panel { margin-top:12px; padding:12px; border:1px solid #e2e2e2; border-radius:8px; background:#fff; }
+.rbs-product-line { font-size:15px; margin-bottom:4px; }
+.rbs-stock-line { color:#333; margin-bottom:10px; }
+.rbs-controls label { margin-right:16px; }
+.rbs-actions button { margin-right:8px; }
+
+.drawingBuffer {display: none;}
+
+#rbs-stock-panel.hidden { display: none; }
+#rbs-stock-panel { margin-top: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; background: #fff; }
+.rbs-form { margin-top: 8px; }
+.rbs-form label { margin-right: 12px; }

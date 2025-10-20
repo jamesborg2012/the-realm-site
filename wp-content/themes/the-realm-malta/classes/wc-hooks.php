@@ -2,6 +2,27 @@
 
 class TRM_WC_Hooks extends TRM_Core
 {
+
+    private const COMM_CODE_MAP = [
+        'standard' => [
+            '95030095',
+            '32131000',
+            '42021250',
+            '49119100',
+            '82031000',
+            '82032000',
+            '82051000',
+            '95030099',
+            '95049080',
+            '96033010',
+        ],
+        'reduced' => [
+            '49019900',
+            '49029000'
+        ],
+        'zero' => [],
+    ];
+
     public function __construct()
     {
         $this->remove_wc_hooks();
@@ -93,7 +114,8 @@ class TRM_WC_Hooks extends TRM_Core
     {
         $custom_fields = [
             'product_code' => '_product_code',
-            'ssc_code' => '_ssc_code'
+            'ssc_code' => '_ssc_code',
+            'commodity_code' => 'tax_class',
         ];
 
         if (!empty($data['meta_data'])) {
@@ -142,6 +164,33 @@ class TRM_WC_Hooks extends TRM_Core
                     continue;
                 }
 
+                //If commodity code - check with list and apply correct tax bracket - Default is 18%
+
+                if ($meta_data['key'] == 'commodity_code' && !empty($meta_data['value'])) {
+                    $tax_class = 'standard';
+
+                    // Check if 'commodity_code' has a value
+                    if (!empty($meta_data['value'])) {
+                        $ccode = $meta_data['value'];
+                        if (isset($compared_comodities[$ccode])) {
+                            $tax_class = $compared_comodities[$ccode];
+                        } else {
+                            //Not performance optimal but will have to do the loop once per commodity code
+                            foreach (self::COMM_CODE_MAP as $tax => $codes) {
+                                foreach ($codes as $code) {
+                                    if (stripos($ccode, $code) !== false) {
+                                        $tax_class = $tax;
+                                        $compared_comodities[$ccode] = $tax;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    $object->is_taxable(true);
+                    $object->set_tax_class($tax_class);
+                }
 
                 $meta_key = $custom_fields[$meta_data['key']] ?? '';
 

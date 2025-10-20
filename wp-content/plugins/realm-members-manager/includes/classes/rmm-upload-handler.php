@@ -37,6 +37,8 @@ class RMM_Upload_Handler
             $file_data[] = array_combine($header, $data);
         }
 
+        $compared_comodities = [];
+
         if (!empty($file_data)) {
             foreach ($file_data as $row) {
                 $query_args = [
