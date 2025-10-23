@@ -38,6 +38,24 @@ class Members_Manager extends Realm_Members_Manager_Core
             'rmm-import-members',
             [$this, 'render_import_members_page']
         );
+
+        add_submenu_page(
+            'realm-members',
+            'Manage Membership Pricing',
+            'Manage Membership Pricing',
+            'manage_options',
+            'rmm-manage-membership-pricing',
+            [$this, 'render_manage_membership_pricing_page']
+        );
+
+        add_submenu_page(
+            'realm-members',
+            'Manage Member Discount',
+            'Manage Member Discount',
+            'manage_options',
+            'rmm-manage-member-discount',
+            [$this, 'render_manage_member_discount_page']
+        );
     }
 
     /**
@@ -113,6 +131,20 @@ class Members_Manager extends Realm_Members_Manager_Core
     {
         echo $this->render_template(
             'admin/bulk-import-members-page'
+        );
+    }
+
+    public function render_manage_membership_pricing_page()
+    {
+        echo $this->render_template(
+            'admin/manage-membership-pricing-page'
+        );
+    }
+
+    public function render_manage_member_discount_page()
+    {
+        echo $this->render_template(
+            'admin/manage-member-discount-page'
         );
     }
 }

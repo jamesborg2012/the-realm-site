@@ -36,6 +36,8 @@ class Realm_GWEU_Upload_Handler
             ];
         }
 
+        $compared_comodities = [];
+
         foreach ($file_data as $row) {
             $product_sku = $row['sku'];
 
@@ -46,9 +48,6 @@ class Realm_GWEU_Upload_Handler
             }
 
             $product = new WC_Product($product_id);
-
-            $product_code = $product->get_meta('_product_code', true);
-            $ssc_code = $product->get_meta('_ssc_code', true);
 
             $old_barcodes = $product->get_meta('trm_gw_old_barcodes', true);
             $old_product_codes = $product->get_meta('trm_gw_old_product_codes', true);
