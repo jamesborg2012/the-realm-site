@@ -2,7 +2,6 @@
 
 class TRM_WC_Hooks extends TRM_Core
 {
-
     private const COMM_CODE_MAP = [
         'standard' => [
             '95030095',
@@ -37,6 +36,8 @@ class TRM_WC_Hooks extends TRM_Core
     public function register_hook_callbacks()
     {
         add_action('woocommerce_checkout_order_processed', [$this, 'check_marketing_order'], 99, 3);
+        // Update user's billing meta fields from checkout data when an order is placed
+        add_action('woocommerce_checkout_order_processed', [$this, 'update_user_billing_meta_on_order'], 100, 3);
         add_filter('storefront_credit_link', '__return_false');
 
         add_action('woocommerce_product_options_inventory_product_data', [$this, 'add_custom_product_data_fields']);
@@ -45,6 +46,9 @@ class TRM_WC_Hooks extends TRM_Core
         add_filter('woocommerce_product_import_pre_insert_product_object', [$this, 'handle_custom_product_import'], 99, 2);
 
         add_filter('woocommerce_coupon_message', [$this, 'update_coupon_message_member'], 99, 3);
+
+        add_filter('woocommerce_get_availability_text', [$this, 'set_custom_backorder_availability_text'], 99, 2);
+        add_filter('woocommerce_get_availability_class', [$this, 'set_custom_backorder_availability_class'], 99, 2);
     }
 
     /**
@@ -220,5 +224,94 @@ class TRM_WC_Hooks extends TRM_Core
         }
 
         return $message;
+    }
+
+    /**
+     * Sets custom availability text for WooCommerce products based on stock and backorder status.
+     *
+     * @param string $availability The default availability text for the product.
+     * @param WC_Product $product The WooCommerce product object being checked.
+     * @return string The updated availability text.
+     */
+    public function set_custom_backorder_availability_text($availability, $product)
+    {
+        if ($product->managing_stock()) {
+            if ($product->is_on_backorder()) {
+                $availability = 'Product available on order';
+            } else if ($product->is_in_stock()) {
+                $availability = 'Product available in store';
+            }
+        }
+
+        return $availability;
+    }
+
+    /**
+     * Sets a custom CSS class for backorder availability based on the product stock status.
+     *
+     * @param string $class The current CSS class for the product.
+     * @param WC_Product $product The WooCommerce product object.
+     * @return string The updated CSS class based on the product's stock status.
+     */
+    public function set_custom_backorder_availability_class($class, $product)
+    {
+        if ($product->managing_stock()) {
+            if ($product->is_on_backorder()) {
+                $class = 'available-on-order';
+            } else if ($product->is_in_stock()) {
+                $class = "available-in-store";
+            }
+        }
+
+        return $class;
+    }
+
+    /**
+     * Update the standard WooCommerce billing user meta fields with values submitted at checkout
+     * when an order is placed.
+     *
+     * Hook: woocommerce_checkout_order_processed (priority 100)
+     *
+     * @param int $order_id
+     * @param array $posted_args Raw posted checkout data
+     * @param WC_Order $order
+     * @return void
+     */
+    public function update_user_billing_meta_on_order($order_id, $posted_args, $order)
+    {
+        if (!is_a($order, 'WC_Order')) {
+            $order = wc_get_order($order_id);
+        }
+        if (!$order) {
+            return;
+        }
+
+        $user_id = (int) $order->get_user_id();
+        if ($user_id <= 0) {
+            // No associated user (guest checkout) – nothing to update
+            return;
+        }
+
+        // Prefer data from the order object (already sanitized by WC); fallback to posted args
+        $billing = array(
+            'billing_first_name' => $order->get_billing_first_name() ?: ($posted_args['billing_first_name'] ?? ''),
+            'billing_last_name'  => $order->get_billing_last_name() ?: ($posted_args['billing_last_name'] ?? ''),
+            'billing_company'    => $order->get_billing_company() ?: ($posted_args['billing_company'] ?? ''),
+            'billing_address_1'  => $order->get_billing_address_1() ?: ($posted_args['billing_address_1'] ?? ''),
+            'billing_address_2'  => $order->get_billing_address_2() ?: ($posted_args['billing_address_2'] ?? ''),
+            'billing_city'       => $order->get_billing_city() ?: ($posted_args['billing_city'] ?? ''),
+            'billing_state'      => $order->get_billing_state() ?: ($posted_args['billing_state'] ?? ''),
+            'billing_postcode'   => $order->get_billing_postcode() ?: ($posted_args['billing_postcode'] ?? ''),
+            'billing_country'    => $order->get_billing_country() ?: ($posted_args['billing_country'] ?? ''),
+            'billing_phone'      => $order->get_billing_phone() ?: ($posted_args['billing_phone'] ?? ''),
+            'billing_email'      => $order->get_billing_email() ?: ($posted_args['billing_email'] ?? ''),
+        );
+
+        foreach ($billing as $meta_key => $value) {
+            // Only update if a value was provided (avoid wiping existing meta with empty strings)
+            if (isset($value) && $value !== '') {
+                update_user_meta($user_id, $meta_key, wc_clean($value));
+            }
+        }
     }
 }

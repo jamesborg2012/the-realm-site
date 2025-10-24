@@ -20,13 +20,13 @@ if (! defined('ABSPATH')) {
 	exit;
 }
 
-if ($product->is_on_backorder()) {
-	$availability = 'Product available on order';
-	$class = "available-on-order";
-} else if ($product->is_in_stock()) {
-	$availability = 'Product available in store';
-	$class = "available-in-store";
-}
+//if ($product->is_on_backorder()) {
+//	$availability = 'Product available on order';
+//	$class = "available-on-order";
+//} else if ($product->is_in_stock()) {
+//	$availability = 'Product available in store';
+//	$class = "available-in-store";
+//}
 
 ?>
 <p class="stock <?php echo esc_attr($class); ?>"><?php echo wp_kses_post($availability); ?></p>

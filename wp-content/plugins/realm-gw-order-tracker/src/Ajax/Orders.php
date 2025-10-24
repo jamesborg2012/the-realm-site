@@ -103,6 +103,19 @@ class Orders
         $items = [];
         foreach ($order->get_items() as $item) {
             $product = $item->get_product();
+            $brand_slug = '';
+            $is_online_only = false;
+
+            if ($product && taxonomy_exists('product_brand')) {
+                $brands = wp_get_post_terms($product->get_id(), 'product_brand', ['fields' => 'slugs']);
+                if (!empty($brands)) {
+                    $brand_slug = $brands[0];
+                    if (in_array('online-only', $brands, true)) {
+                        $is_online_only = true;
+                    }
+                }
+            }
+
             $items[] = [
                 'item_id'         => $item->get_id(),
                 'title'           => $item->get_name(),
@@ -110,7 +123,9 @@ class Orders
                 'qty'             => (int) $item->get_quantity(),
                 'gw_ordered_qty'  => (int) wc_get_order_item_meta($item->get_id(), '_gw_ordered_qty', true),
                 'gw_received_qty' => (int) wc_get_order_item_meta($item->get_id(), '_gw_received_qty', true),
-                'gw_delivered_qty' => (int) wc_get_order_item_meta($item->get_id(), '_gw_delivered_qty', true),
+                'gw_delivered_qty'=> (int) wc_get_order_item_meta($item->get_id(), '_gw_delivered_qty', true),
+                'is_online_only'  => $is_online_only,
+                'brand'           => $brand_slug,
             ];
         }
 
@@ -140,24 +155,47 @@ class Orders
             wp_send_json_error(['message' => __('No orders found for this date range.', 'gwot')]);
         }
 
-        // Aggregate product quantities
+        // Aggregate product quantities as (user ordered qty) - (GW ordered qty)
         $aggregated = [];
 
         foreach ($orders as $order) {
             foreach ($order->get_items() as $item) {
+                $product = $item->get_product();
+                if (!$product) {
+                    continue;
+                }
+
+                // Skip online-only products
+                $is_online_only = false;
+                if (taxonomy_exists('product_brand')) {
+                    $brands = wp_get_post_terms($product->get_id(), 'product_brand', ['fields' => 'slugs']);
+                    if (in_array('online-only', $brands, true)) {
+                        $is_online_only = true;
+                    }
+                }
+
+                if ($is_online_only) {
+                    continue; // Don't include in CSV
+                }
+
                 $name = $item->get_name();
-                $qty  = (int) $item->get_quantity();
+                $qty_user  = (int) $item->get_quantity();
+                $qty_gw    = (int) wc_get_order_item_meta($item->get_id(), '_gw_ordered_qty', true);
+                $delta     = $qty_user - $qty_gw;
 
                 if (!isset($aggregated[$name])) {
                     $aggregated[$name] = 0;
                 }
-                $aggregated[$name] += $qty;
+                $aggregated[$name] += $delta;
             }
         }
 
-        // Build CSV
+        // Build CSV (exclude products where the aggregated delta equals 0)
         $csv_lines = ["Name of Product,Quantity Ordered"];
         foreach ($aggregated as $name => $qty) {
+            if ($qty === 0) {
+                continue;
+            }
             $csv_lines[] = '"' . str_replace('"', '""', $name) . '",' . $qty;
         }
 

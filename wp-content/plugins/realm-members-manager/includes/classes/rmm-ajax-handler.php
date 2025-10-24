@@ -13,6 +13,11 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
 
         add_action('wp_ajax_register_new_member', [$this, 'register_new_member']);
         add_action('wp_ajax_norpiv_register_new_member', [$this, 'register_new_member']);
+
+        // Prefill checkout fields when a valid member is set in session
+        add_filter('woocommerce_checkout_get_value', [$this, 'prefill_member_checkout_value'], 10, 2);
+        // Assign order to the member customer when creating the order
+        add_action('woocommerce_checkout_create_order', [$this, 'assign_member_customer_to_order'], 10, 2);
     }
 
     /**
@@ -23,7 +28,9 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
         $store_discount = get_option('rmm_member_store_discount', 18);
         $online_discount = get_option('rmm_member_online_discount', 8);
 
+        // Reset any previous membership linkage
         WC()->session->set('member_number', '');
+        WC()->session->set('member_user_id', 0);
 
         $membership_number = $_POST['member_number'] ?? '';
 
@@ -47,6 +54,8 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
         ]);
 
         if (empty($result)) {
+            // Clear session if invalid number
+            WC()->session->set('member_user_id', 0);
             wp_send_json_error([
                 'status' => 'error',
                 'message' => 'Number provided does not belong to existing member!'
@@ -58,11 +67,16 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
         $expire = get_user_meta($user->ID, 'rmm_membership_expire', true);
 
         if (!$is_active || ($is_active && strtotime($expire) < strtotime('now'))) {
+            // Clear session if not active
+            WC()->session->set('member_user_id', 0);
             wp_send_json_error([
                 'status' => 'error',
                 'message' => 'Customer membership expired or customer is no longer a member!'
             ]);
         }
+
+        // Store the matched user ID for later checkout prefill and order assignment
+        WC()->session->set('member_user_id', $user->ID);
 
         $items = $woocommerce->cart->get_cart();
         $has_shop_items = false;
@@ -163,5 +177,67 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
         wp_send_json_success([
             'status' => 'success'
         ]);
+    }
+
+    /**
+     * Prefill checkout fields from the member matched by membership number
+     */
+    public function prefill_member_checkout_value($value, $input)
+    {
+        $member_user_id = WC()->session ? intval(WC()->session->get('member_user_id')) : 0;
+        if (!$member_user_id) {
+            return $value;
+        }
+
+        $map = [
+            'billing_first_name' => 'billing_first_name',
+            'billing_last_name' => 'billing_last_name',
+            'billing_address_1' => 'billing_address_1',
+            'billing_city' => 'billing_city',
+            'billing_postcode' => 'billing_postcode',
+            'billing_phone' => 'billing_phone',
+            'billing_email' => 'billing_email',
+        ];
+
+        if (!array_key_exists($input, $map)) {
+            return $value;
+        }
+
+        // For email, prefer WP user email if billing_email meta is empty
+        if ($input === 'billing_email') {
+            $user = get_user_by('id', $member_user_id);
+            if ($user && !empty($user->user_email)) {
+                return $user->user_email;
+            }
+        }
+
+        $meta_key = $map[$input];
+        $meta_val = get_user_meta($member_user_id, $meta_key, true);
+        return empty($meta_val) ? $value : $meta_val;
+    }
+
+    /**
+     * Assign the order to the matched member as the customer
+     */
+    public function assign_member_customer_to_order($order, $data)
+    {
+        $member_user_id = WC()->session ? intval(WC()->session->get('member_user_id')) : 0;
+        if (!$member_user_id) {
+            return;
+        }
+
+        if (is_a($order, 'WC_Order')) {
+            // Set the customer on the order regardless of current auth state
+            $order->set_customer_id($member_user_id);
+
+            // Ensure billing email is set if empty
+            $billing = $order->get_address('billing');
+            if (empty($billing['email'])) {
+                $user = get_user_by('id', $member_user_id);
+                if ($user && !empty($user->user_email)) {
+                    $order->set_billing_email($user->user_email);
+                }
+            }
+        }
     }
 }

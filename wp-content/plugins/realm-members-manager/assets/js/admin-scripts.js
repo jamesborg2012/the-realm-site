@@ -9,6 +9,9 @@ function adminScriptsWrapper ($) {
       $('.manage-member-btn').click(adminScripts.enableMemberModal)
       $('.create-member').click(adminScripts.createNewMember)
       $('.modal-close-button').click(adminScripts.closeModal)
+
+      // Delegate since modal content is loaded via AJAX
+      $(document).on('submit', '.update-member-details-form', adminScripts.updateMemberDetails)
     },
 
     enableNewMemberModal: function (e) {
@@ -82,6 +85,38 @@ function adminScriptsWrapper ($) {
               alert('Something went wrong, please try again!')
             }
           }
+        }
+      })
+    },
+
+    updateMemberDetails: function (e) {
+      e.preventDefault()
+
+      var form = $(this)
+      var formData = form.serialize()
+
+      $.ajax({
+        url: rmmAjaxObj.ajaxUrl,
+        type: 'POST',
+        data: {
+          action: 'update_member_details',
+          form_data: formData,
+          nonce: rmmAjaxObj.ajaxNonce
+        },
+        success: function (response) {
+          if (response && response.success) {
+            alert('Member details updated successfully!')
+            // Close the modal
+            form.closest('.rmm-modal').removeClass('enable-modal')
+            form.closest('body').removeClass('modal-open')
+          } else if (response && response.data && response.data.message) {
+            alert(response.data.message)
+          } else {
+            alert('Unable to update member details. Please try again!')
+          }
+        },
+        error: function () {
+          alert('Unable to update member details. Please try again!')
         }
       })
     },

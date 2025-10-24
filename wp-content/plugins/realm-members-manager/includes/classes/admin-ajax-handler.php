@@ -10,6 +10,7 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
     {
         add_action('wp_ajax_load_member_data', [$this, 'load_member_data']);
         add_action('wp_ajax_create_new_member', [$this, 'create_new_member']);
+        add_action('wp_ajax_update_member_details', [$this, 'update_member_details']);
     }
 
     /**
@@ -115,6 +116,58 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
 
         wp_send_json_success([
             'status' => 'member_created'
+        ]);
+    }
+        /**
+     * Updates member details from admin modal
+     */
+    public function update_member_details()
+    {
+        $form_data = isset($_POST['form_data']) ? $_POST['form_data'] : '';
+
+        if (empty($form_data)) {
+            wp_send_json_error([
+                'message' => 'No data received.'
+            ]);
+        }
+
+        parse_str($form_data, $data);
+
+        $user_id = isset($data['user_id']) ? intval($data['user_id']) : 0;
+        $status = isset($data['rmm_membership_status']) ? sanitize_text_field($data['rmm_membership_status']) : '';
+        $expires_raw = isset($data['rmm_membership_expires']) ? $data['rmm_membership_expires'] : '';
+
+        if ($user_id <= 0) {
+            wp_send_json_error([
+                'message' => 'Invalid user id.'
+            ]);
+        }
+
+        if (!in_array($status, ['active', 'deactive', 'new'])) {
+            // Keep it lenient but sanitize unknown status
+            $status = sanitize_text_field($status);
+        }
+
+        // Normalize date to Y-m-d if provided; accept formats like d/m/Y or Y-m-d
+        $expires = '';
+        if (!empty($expires_raw)) {
+            $normalized = str_replace('/', '-', $expires_raw);
+            $ts = strtotime($normalized);
+            if ($ts !== false) {
+                $expires = date('Y-m-d', $ts);
+            }
+        }
+
+        // Update meta
+        update_user_meta($user_id, 'rmm_membership_status', $status);
+        if (!empty($expires)) {
+            // The plugin elsewhere uses rmm_membership_expire (singular); keep both in sync
+            update_user_meta($user_id, 'rmm_membership_expire', $expires);
+            update_user_meta($user_id, 'rmm_membership_expires', $expires);
+        }
+
+        wp_send_json_success([
+            'status' => 'updated'
         ]);
     }
 }
