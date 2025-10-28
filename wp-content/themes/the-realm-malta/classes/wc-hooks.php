@@ -49,6 +49,13 @@ class TRM_WC_Hooks extends TRM_Core
 
         add_filter('woocommerce_get_availability_text', [$this, 'set_custom_backorder_availability_text'], 99, 2);
         add_filter('woocommerce_get_availability_class', [$this, 'set_custom_backorder_availability_class'], 99, 2);
+
+        add_filter('product_cat_class', [$this, 'set_custom_product_cat_class'], 99, 3);
+
+        // Exclude products without a price from frontend queries (e.g., product archives and Query Loop)
+        add_action('pre_get_posts', [$this, 'exclude_products_without_price'], 99);
+
+        add_action('woocommerce_before_shop_loop', [$this, 'render_sub_category_filter'], 99);
     }
 
     /**
@@ -266,6 +273,19 @@ class TRM_WC_Hooks extends TRM_Core
         return $class;
     }
 
+    public function set_custom_product_cat_class($classes, $class, $category)
+    {
+        if ($class == 'product-category-item') {
+            foreach ($classes as $key => $value) {
+                if ($value == 'first' || $value == 'last') {
+                    unset($classes[$key]);
+                }
+            }
+        }
+
+        return $classes;
+    }
+
     /**
      * Update the standard WooCommerce billing user meta fields with values submitted at checkout
      * when an order is placed.
@@ -286,7 +306,7 @@ class TRM_WC_Hooks extends TRM_Core
             return;
         }
 
-        $user_id = (int) $order->get_user_id();
+        $user_id = (int)$order->get_user_id();
         if ($user_id <= 0) {
             // No associated user (guest checkout) – nothing to update
             return;
@@ -295,16 +315,16 @@ class TRM_WC_Hooks extends TRM_Core
         // Prefer data from the order object (already sanitized by WC); fallback to posted args
         $billing = array(
             'billing_first_name' => $order->get_billing_first_name() ?: ($posted_args['billing_first_name'] ?? ''),
-            'billing_last_name'  => $order->get_billing_last_name() ?: ($posted_args['billing_last_name'] ?? ''),
-            'billing_company'    => $order->get_billing_company() ?: ($posted_args['billing_company'] ?? ''),
-            'billing_address_1'  => $order->get_billing_address_1() ?: ($posted_args['billing_address_1'] ?? ''),
-            'billing_address_2'  => $order->get_billing_address_2() ?: ($posted_args['billing_address_2'] ?? ''),
-            'billing_city'       => $order->get_billing_city() ?: ($posted_args['billing_city'] ?? ''),
-            'billing_state'      => $order->get_billing_state() ?: ($posted_args['billing_state'] ?? ''),
-            'billing_postcode'   => $order->get_billing_postcode() ?: ($posted_args['billing_postcode'] ?? ''),
-            'billing_country'    => $order->get_billing_country() ?: ($posted_args['billing_country'] ?? ''),
-            'billing_phone'      => $order->get_billing_phone() ?: ($posted_args['billing_phone'] ?? ''),
-            'billing_email'      => $order->get_billing_email() ?: ($posted_args['billing_email'] ?? ''),
+            'billing_last_name' => $order->get_billing_last_name() ?: ($posted_args['billing_last_name'] ?? ''),
+            'billing_company' => $order->get_billing_company() ?: ($posted_args['billing_company'] ?? ''),
+            'billing_address_1' => $order->get_billing_address_1() ?: ($posted_args['billing_address_1'] ?? ''),
+            'billing_address_2' => $order->get_billing_address_2() ?: ($posted_args['billing_address_2'] ?? ''),
+            'billing_city' => $order->get_billing_city() ?: ($posted_args['billing_city'] ?? ''),
+            'billing_state' => $order->get_billing_state() ?: ($posted_args['billing_state'] ?? ''),
+            'billing_postcode' => $order->get_billing_postcode() ?: ($posted_args['billing_postcode'] ?? ''),
+            'billing_country' => $order->get_billing_country() ?: ($posted_args['billing_country'] ?? ''),
+            'billing_phone' => $order->get_billing_phone() ?: ($posted_args['billing_phone'] ?? ''),
+            'billing_email' => $order->get_billing_email() ?: ($posted_args['billing_email'] ?? ''),
         );
 
         foreach ($billing as $meta_key => $value) {
@@ -314,4 +334,88 @@ class TRM_WC_Hooks extends TRM_Core
             }
         }
     }
+
+    /**
+     * Exclude products without a price from frontend product queries, including Query Loop.
+     * Ensures only products with a non-empty _price meta appear.
+     *
+     * Hook: pre_get_posts (priority 99)
+     *
+     * @param WP_Query $q
+     * @return void
+     */
+    public function exclude_products_without_price($q)
+    {
+        // Only affect frontend (not admin, AJAX, or REST) and product-related queries.
+        if (is_admin() || wp_doing_ajax() || (defined('REST_REQUEST') && REST_REQUEST)) {
+            return;
+        }
+
+        // Do not alter single product pages.
+        if (method_exists($q, 'is_singular') && $q->is_singular('product')) {
+            return;
+        }
+
+        $post_type = $q->get('post_type');
+        $is_product_query = false;
+
+        if ($post_type === 'product') {
+            $is_product_query = true;
+        } elseif (is_array($post_type) && in_array('product', $post_type, true)) {
+            $is_product_query = true;
+        } elseif ($q->get('wc_query') || $q->get('product_cat') || $q->get('product_tag')) {
+            // Heuristics for product taxonomy/archive queries.
+            $is_product_query = true;
+        }
+
+        if (!$is_product_query) {
+            return;
+        }
+
+        $meta_query = (array)$q->get('meta_query');
+
+        // Require _price meta to exist and not be an empty string.
+        $meta_query[] = [
+            'key' => '_price',
+            'compare' => 'EXISTS',
+        ];
+        $meta_query[] = [
+            'key' => '_price',
+            'value' => '',
+            'compare' => '!=',
+        ];
+
+        $q->set('meta_query', $meta_query);
+    }
+
+    function render_sub_category_filter()
+    {
+        $current_term = get_queried_object();
+
+        if ($current_term && $current_term->taxonomy == 'product_cat') {
+            /**
+             * @var $current_term WP_Term
+             */
+            //Get all terms which have this term as parent
+            $sub_terms = get_terms([
+                'taxonomy' => 'product_cat',
+                'parent' => $current_term->term_id,
+                'hide_empty' => true,
+                'fields' => 'all',
+                'orderby' => 'name',
+                'order' => 'ASC'
+            ]);
+
+            if (!is_wp_error($sub_terms) && !empty($sub_terms)) {
+                // Load a theme view to render the subcategory list. The template receives $sub_terms.
+                if (function_exists('wc_get_template')) {
+                    wc_get_template('sub-category-filter.php', [
+                        'sub_terms' => $sub_terms,
+                        'current_term' => $current_term,
+                    ]);
+                }
+            }
+        }
+    }
+
 }

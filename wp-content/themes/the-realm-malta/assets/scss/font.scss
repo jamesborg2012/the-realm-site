@@ -1,0 +1,79 @@
+/* ==========================================================================
+   Font Setup: Lato (Google Fonts)
+   ========================================================================== */
+
+/* Import from Google Fonts — make sure this compiles to CSS early in your main bundle */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
+
+/* Define global font variables for maintainability */
+:root {
+  --font-primary: 'Lato', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+  --font-weight-black: 900;
+}
+
+/* Apply globally across the site */
+html, body {
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-normal);
+  font-size: 16px;
+  line-height: 1.6;
+  color: #222;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  color: inherit;
+  margin-bottom: 0.6em;
+}
+
+/* Paragraphs and base text */
+p, span, li, a, label, input, textarea, button {
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-normal);
+}
+
+/* WooCommerce-specific typography */
+.woocommerce {
+  font-family: var(--font-primary);
+
+  .woocommerce-breadcrumb,
+  .woocommerce-message,
+  .woocommerce-error,
+  .woocommerce-info,
+  .woocommerce-cart-form,
+  .woocommerce-checkout,
+  .woocommerce-account {
+    font-family: var(--font-primary);
+  }
+
+  .product_title,
+  .woocommerce-loop-product__title,
+  .woocommerce-Price-amount {
+    font-family: var(--font-primary);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .woocommerce-tabs h2,
+  .woocommerce-Tabs-panel h2 {
+    font-weight: var(--font-weight-bold);
+  }
+}
+
+/* Buttons and form elements */
+button,
+input[type="button"],
+input[type="submit"],
+.woocommerce a.button,
+.woocommerce button.button,
+.woocommerce input.button {
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
