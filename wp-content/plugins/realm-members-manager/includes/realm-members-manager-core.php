@@ -22,6 +22,8 @@ class Realm_Members_Manager_Core
             'RMM_Admin_Ajax_Handler' => RMM_Admin_Ajax_Handler::get_instance(),
             'RMM_Ajax_Handler' => RMM_Ajax_Handler::get_instance(),
             'RMM_WC_Hooks_Handler' => RMM_WC_Hooks_Handler::get_instance(),
+            'RMM_Shortcodes_Handler' => RMM_Shortcodes_Handler::get_instance(),
+            'RMM_Settings_Handler' => RMM_Settings_Handler::get_instance(),
         );
     }
 
@@ -78,6 +80,13 @@ class Realm_Members_Manager_Core
         );
 
         wp_enqueue_script(self::PREFIX . 'scripts');
+
+        wp_enqueue_style(
+            self::PREFIX . 'public',
+            plugins_url('assets/css/public.css', dirname(__FILE__)),
+            [],
+            $version
+        );
     }
 
     /**

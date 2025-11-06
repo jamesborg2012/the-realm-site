@@ -1,4 +1,7 @@
 .idea
+docker
+docker-compose.yml
+.env
 
 # Folders
 wp-admin
@@ -20,5 +23,17 @@ wp-content/debug.log
 #Include Files
 !wp-content/themes/the-realm-malta
 !wp-content/themes/the-realm-malta-gutenberg
-!wp-content/plugins/realm-members-manager
-!wp-content/plugins/realm-gw-excel-uploader
+!wp-content/plugins/realm*
+
+# OS + build
+.DS_Store
+node_modules/
+npm-debug.log*
+package-lock.json
+.env
+
+# Docker artifacts
+docker-compose.override.yml
+docker/logs/
+
+.vscode

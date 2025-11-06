@@ -1,0 +1,36 @@
+.rmm-new-member-form .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 1em; /* spacing between rows */
+}
+  
+  .rmm-new-member-form .form-row .col {
+    flex: 1 1 50%;
+    box-sizing: border-box;
+    padding: 0 0.5em; /* horizontal spacing between columns */
+  }
+  
+  /* Optional: make form look cleaner on smaller screens */
+  @media (max-width: 600px) {
+    .rmm-new-member-form .form-row .col {
+      flex: 1 1 100%;
+    }
+  }
+
+  .rmm-new-member-form .membership-information {
+    text-align: center;
+  }
+
+  .rmm-new-member-form .membership-information .membership-cost,
+  .rmm-new-member-form .membership-information .membership-length {
+    font-weight: bold;
+  }
+
+  .rmm-new-member-form .submit-form-row {
+    text-align: center;
+  }
+
+  .submit-form-row button {
+    background-color: #1a1a1a;
+    color: #fff;
+  }

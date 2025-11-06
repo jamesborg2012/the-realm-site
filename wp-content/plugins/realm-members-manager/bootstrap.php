@@ -23,6 +23,8 @@ if (verify_requirements_met()) {
     require('includes/classes/rmm-ajax-handler.php');
     require('includes/classes/wc-hooks-handler.php');
     require('includes/classes/rmm-upload-handler.php');
+    require('includes/classes/rmm-shortcodes-handler.php');
+    require('includes/classes/rmm-settings-handler.php');
 
     if (class_exists('Realm_Members_Manager_Core')) {
         $GLOBALS['op'] = Realm_Members_Manager_Core::get_instance();
