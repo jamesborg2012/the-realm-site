@@ -35,3 +35,5 @@ package-lock.json
 # Docker artifacts
 docker-compose.override.yml
 docker/logs/
+
+.vscode
