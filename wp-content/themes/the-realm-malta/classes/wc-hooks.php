@@ -15,11 +15,11 @@ class TRM_WC_Hooks extends TRM_Core
             '95049080',
             '96033010',
         ],
-        'reduced' => [
+        'reduced-rate' => [
             '49019900',
             '49029000'
         ],
-        'zero' => [],
+        'zero-rate' => [],
     ];
 
     public function __construct()
@@ -178,7 +178,7 @@ class TRM_WC_Hooks extends TRM_Core
                 //If commodity code - check with list and apply correct tax bracket - Default is 18%
 
                 if ($meta_data['key'] == 'commodity_code' && !empty($meta_data['value'])) {
-                    $tax_class = 'standard';
+                    $tax_class = '';
 
                     // Check if 'commodity_code' has a value
                     if (!empty($meta_data['value'])) {
