@@ -70,7 +70,7 @@ $expiryDate = new DateTime("$year-12-31");
 		</div>
 		
 		<!-- Membership Offer Section -->
-		<div class="realm-membership-offer">
+		<div class="realm-membership-offer is-hidden">
 			<h3 class="realm-membership-offer__heading">Become a Member of the Realm.</h3>
 			
 			<div class="realm-membership-offer__content">

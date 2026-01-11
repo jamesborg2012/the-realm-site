@@ -94,6 +94,10 @@ jQuery(document).ready(function($) {
                 // Re-enable submit button
                 $submitButton.prop('disabled', false).removeClass('is-loading');
                 $form.removeClass('is-submitting');
+                
+                if (is_realm_member === '0') {
+                    $('.realm-membership-offer').removeClass('is-hidden');
+                }
             }
         });
     });
