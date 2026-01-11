@@ -5,11 +5,13 @@ require_once('classes/trm-marketing.php');
 require_once('classes/wc-hooks.php');
 require_once('classes/metabox-hooks.php');
 require_once('classes/acf-hooks.php');
+require_once('classes/ajax-hooks.php');
 
 new TRM_Marketing_Handler();
 new TRM_WC_Hooks();
 new TRM_MB_Hooks();
 new TRM_ACF_Hooks();
+new TRM_Core();
 
 function trm_load_parent_stylesheets()
 {
