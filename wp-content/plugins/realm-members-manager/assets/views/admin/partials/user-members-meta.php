@@ -2,7 +2,8 @@
 
 $membership_statuses = [
     'not_active' => 'Not Active',
-    'active' => 'Active'
+    'active' => 'Active',
+    'review' => 'Under Review'
 ];
 
 ?>

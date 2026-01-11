@@ -83,6 +83,17 @@ class Members_Manager extends Realm_Members_Manager_Core
             if ($member_number != '' && $member_status == 'active' && strtotime($expires_at) > strtotime('now')) {
                 $is_member_flag = true;
             }
+            
+            if($member_status == '') {
+                $member_status = 'not_active';
+            }
+            
+            $current_status = 'Not a Member';
+            if($member_status == 'active') {
+                $current_status = 'Member';
+            } elseif ($member_status == 'review') {
+                $current_status = 'Under Review';
+            }
 
             $users_data[] = [
                 'id' => $site_user->ID,
@@ -90,7 +101,8 @@ class Members_Manager extends Realm_Members_Manager_Core
                 'name' => $site_user->first_name . ' ' . $site_user->last_name,
                 'email' => $site_user->user_email,
                 'phone' => get_user_meta($site_user->ID, 'billing_phone', true),
-                'is_member' => $member_status == 'active' ? 'Member' : 'Not a Member',
+                'is_member' => $current_status,
+                'member_status' => $member_status,
                 'expires_at' => $expires_at == '' ? 'N/A' : date('d/m/Y', strtotime($expires_at)),
                 'is_member_flag' => $is_member_flag
             ];

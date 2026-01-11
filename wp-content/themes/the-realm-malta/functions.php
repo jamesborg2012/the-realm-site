@@ -42,10 +42,12 @@ function trm_load_child_theme_scripts_styles()
     wp_localize_script('trm-ajax', 'trmAjax', array(
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('realm_register_customer'),
+        'membershipNonce' => wp_create_nonce('realm_apply_membership'),
         'messages' => array(
             'duplicate' => 'The account you are registering already exists.',
             'error' => 'Please wait and try again later.',
-            'success' => 'Your account is registered and will be finalised soon after review.'
+            'success' => 'Your account is registered and will be finalised soon after review.',
+            'membershipSuccess' => 'Thank you for applying to be a member! You will be contacted shortly to finalise payment and join this amazing community!'
         )
     ));
 }

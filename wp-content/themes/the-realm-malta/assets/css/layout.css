@@ -273,6 +273,130 @@ body a {
   animation: spin 0.6s linear infinite;
 }
 
+.realm-membership-offer {
+  background: #f8f9fa;
+  border: 2px solid #e5e5e5;
+  border-radius: 4px;
+  padding: 30px;
+  margin-top: 30px;
+}
+.realm-membership-offer__heading {
+  font-size: 24px;
+  font-weight: 700;
+  color: #000;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+@media screen and (min-width: 768px) {
+  .realm-membership-offer__heading {
+    font-size: 28px;
+  }
+}
+.realm-membership-offer__content {
+  transition: opacity 0.3s ease;
+}
+.realm-membership-offer__content.is-hidden {
+  display: none;
+}
+.realm-membership-offer__description {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+.realm-membership-offer__details {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 25px 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 20px 25px;
+}
+.realm-membership-offer__details li {
+  font-size: 15px;
+  line-height: 1.8;
+  color: #333;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.realm-membership-offer__details li:last-child {
+  border-bottom: none;
+}
+.realm-membership-offer__details li strong {
+  color: #000;
+}
+.realm-membership-offer__actions {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.realm-membership-offer__actions button {
+  background-color: #000;
+  color: #fff;
+  padding: 15px 40px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  min-width: 200px;
+}
+.realm-membership-offer__actions button:hover:not(:disabled) {
+  background-color: #333;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.realm-membership-offer__actions button:active:not(:disabled) {
+  background-color: #555;
+  transform: translateY(0);
+}
+.realm-membership-offer__actions button:disabled, .realm-membership-offer__actions button.is-loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.realm-membership-offer__actions button.is-loading::after {
+  content: "";
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+.realm-membership-offer__message {
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 20px;
+}
+.realm-membership-offer__message.is-hidden {
+  display: none;
+}
+.realm-membership-offer__message--success {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+.realm-membership-offer__message--error {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+.realm-membership-offer__message p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .is-hidden {
   display: none !important;
 }

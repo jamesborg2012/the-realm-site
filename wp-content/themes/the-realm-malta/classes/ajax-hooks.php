@@ -12,6 +12,10 @@ class TRM_AJAX_Hooks extends TRM_Core
         // Register AJAX actions for both logged-in and logged-out users
         add_action('wp_ajax_realm_register_customer', array($this, 'handle_customer_registration'));
         add_action('wp_ajax_nopriv_realm_register_customer', array($this, 'handle_customer_registration'));
+        
+        // Membership application actions
+        add_action('wp_ajax_realm_apply_membership', array($this, 'handle_membership_application'));
+        add_action('wp_ajax_nopriv_realm_apply_membership', array($this, 'handle_membership_application'));
     }
     
     /**
@@ -153,8 +157,64 @@ class TRM_AJAX_Hooks extends TRM_Core
         // Send new user notification
         wp_new_user_notification($user_id, null, 'both');
         
+        // Generate a short-lived token for membership application (prevents abuse)
+        $membership_token = wp_generate_password(32, false);
+        set_transient('realm_membership_token_' . $user_id, $membership_token, 3600); // 1 hour expiry
+        
+        // Return success with user_id and membership token
+        wp_send_json_success(array(
+            'user_id' => (int) $user_id,
+            'membership_token' => $membership_token
+        ));
+    }
+    
+    /**
+     * Handle membership application request
+     * Sets user meta rmm_membership_status to 'review'
+     */
+    public function handle_membership_application()
+    {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'realm_apply_membership')) {
+            wp_send_json_error(array('code' => 'server_error'), 403);
+        }
+        
+        // Sanitize and validate user_id
+        $user_id = isset($_POST['user_id']) ? absint($_POST['user_id']) : 0;
+        
+        if ($user_id <= 0) {
+            wp_send_json_error(array('code' => 'validation'), 400);
+        }
+        
+        // Verify user exists
+        $user = get_user_by('id', $user_id);
+        if (!$user) {
+            wp_send_json_error(array('code' => 'validation'), 400);
+        }
+        
+        // Verify membership token (security check to prevent abuse)
+        $membership_token = isset($_POST['membership_token']) ? sanitize_text_field(wp_unslash($_POST['membership_token'])) : '';
+        $stored_token = get_transient('realm_membership_token_' . $user_id);
+        
+        if (empty($membership_token) || $membership_token !== $stored_token) {
+            $this->write_log('Membership token mismatch for user_id: ' . $user_id);
+            wp_send_json_error(array('code' => 'server_error'), 403);
+        }
+        
+        // Delete the token (one-time use)
+        delete_transient('realm_membership_token_' . $user_id);
+        
+        // Set membership status to review
+        $result = update_user_meta($user_id, 'rmm_membership_status', 'review');
+        
+        if ($result === false && get_user_meta($user_id, 'rmm_membership_status', true) !== 'review') {
+            // Update failed and value is not already 'review'
+            $this->write_log('Failed to update membership status for user_id: ' . $user_id);
+            wp_send_json_error(array('code' => 'server_error'), 500);
+        }
+        
         // Return success
-        wp_send_json_success(array('user_id' => $user_id));
+        wp_send_json_success();
     }
 }
 

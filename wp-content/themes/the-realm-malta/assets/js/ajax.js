@@ -66,7 +66,19 @@ jQuery(document).ready(function($) {
             dataType: 'json',
             success: function(response) {
                 if (response.success) {
-                    // Hide form and show success message
+                    // Validate user_id is present in response
+                    if (!response.data || !response.data.user_id) {
+                        handleError('server_error');
+                        return;
+                    }
+                    
+                    // Store user_id and membership_token for membership application
+                    $successContainer.attr('data-user-id', response.data.user_id);
+                    if (response.data.membership_token) {
+                        $successContainer.attr('data-membership-token', response.data.membership_token);
+                    }
+                    
+                    // Hide form and show success message with membership offer
                     $formContainer.addClass('is-hidden');
                     $successContainer.removeClass('is-hidden');
                 } else {
@@ -76,7 +88,7 @@ jQuery(document).ready(function($) {
             },
             error: function(xhr, status, error) {
                 // Network or server error
-                handleError(error);
+                handleError('server_error');
             },
             complete: function() {
                 // Re-enable submit button
@@ -85,6 +97,82 @@ jQuery(document).ready(function($) {
             }
         });
     });
+    
+    // Membership Application Handler
+    var $membershipButton = $('.js-realm-membership-apply');
+    var $membershipMessage = $('.realm-membership-offer__message');
+    var $membershipContent = $('.realm-membership-offer__content');
+    var membershipSubmitted = false;
+    
+    $membershipButton.on('click', function(e) {
+        e.preventDefault();
+        
+        // Prevent double submission
+        if (membershipSubmitted) {
+            return;
+        }
+        
+        // Get stored user_id and token
+        var userId = $successContainer.attr('data-user-id');
+        var membershipToken = $successContainer.attr('data-membership-token');
+        
+        // Validate user_id is present
+        if (!userId || userId === '') {
+            showMembershipMessage(trmAjax.messages.error, 'error');
+            return;
+        }
+        
+        // Clear previous messages
+        $membershipMessage.html('').removeClass('realm-membership-offer__message--success realm-membership-offer__message--error is-hidden');
+        
+        // Disable button and show loading state
+        $membershipButton.prop('disabled', true).addClass('is-loading');
+        
+        // Prepare membership application data
+        var membershipData = {
+            action: 'realm_apply_membership',
+            nonce: trmAjax.membershipNonce,
+            user_id: userId,
+            membership_token: membershipToken
+        };
+        
+        // Send AJAX request
+        $.ajax({
+            url: trmAjax.ajaxUrl,
+            type: 'POST',
+            data: membershipData,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Mark as submitted to prevent resubmission
+                    membershipSubmitted = true;
+                    
+                    // Hide the membership offer content
+                    $membershipContent.addClass('is-hidden');
+                    
+                    // Show success message
+                    showMembershipMessage(trmAjax.messages.membershipSuccess, 'success');
+                } else {
+                    // Show error message
+                    showMembershipMessage(trmAjax.messages.error, 'error');
+                    $membershipButton.prop('disabled', false).removeClass('is-loading');
+                }
+            },
+            error: function(xhr, status, error) {
+                // Network or server error
+                showMembershipMessage(trmAjax.messages.error, 'error');
+                $membershipButton.prop('disabled', false).removeClass('is-loading');
+            }
+        });
+    });
+    
+    // Helper function to show membership messages
+    function showMembershipMessage(message, type) {
+        $membershipMessage
+            .html('<p>' + message + '</p>')
+            .addClass('realm-membership-offer__message--' + type)
+            .removeClass('is-hidden');
+    }
     
     // Error handler
     function handleError(errorCode) {

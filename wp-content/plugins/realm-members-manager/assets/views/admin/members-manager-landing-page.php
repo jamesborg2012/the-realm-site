@@ -7,6 +7,10 @@
             Inactive users will have this color
             <span style="display: inline-block; width: 20px; height: 20px; background-color: #950606; border-radius: 3px;"></span>
         </p>
+        <p style="font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            Users that need review will have this color
+            <span style="display: inline-block; width: 20px; height: 20px; background-color: #FFCC00; border-radius: 3px;"></span>
+        </p>
     </div>
 
     <div class="container create-member-container">
@@ -28,7 +32,7 @@
             </thead>
             <tbody>
                 <?php foreach ($users_data as $user): ?>
-                    <tr class='member-row <?= $user['is_member_flag'] ? 'member' : 'not-a-member' ?>'>
+                    <tr class='member-row <?= $user['member_status'] ?>'>
                         <td><?= $user['member_number'] ?></td>
                         <td><?= $user['name'] ?></td>
                         <td><?= $user['email'] ?></td>
@@ -85,6 +89,7 @@
                 <select name="rmm_member_status" id="rmm_member_status">
                     <option value="active" selected>Active</option>
                     <option value="not_active">Not Active</option>
+                    <option value="review">Under Review</option>
                 </select>
             </label>
             <label>

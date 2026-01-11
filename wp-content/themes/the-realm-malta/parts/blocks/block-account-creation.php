@@ -15,7 +15,32 @@ $form_data = [
 	'mobile_number' => '',
 	'is_realm_member' => false,
 	'membership_number' => '',
-]; ?>
+];
+
+// Get the current month number (1 = January, 12 = December)
+$currentMonth = (int) date('n');
+
+// Calculate how many months are left including the current one
+$monthsUntilDecember = 12 - $currentMonth + 1;
+
+// Round to the nearest multiple of 3
+$rounded = round($monthsUntilDecember / 3) * 3;
+
+// If the result is 1 or 2 after rounding, set it to 12
+if ($rounded === 1) {
+    $rounded = 12;
+}
+
+$membership_cost = get_option("rmm_{$rounded}_months_membership", 'X');
+
+$year = date('Y');
+if ($rounded === 12) {
+    $year++;
+}
+
+$expiryDate = new DateTime("$year-12-31");
+
+?>
 
 <div class="realm-account-creation">
 	
@@ -39,9 +64,35 @@ $form_data = [
 	<?php endif; ?>
 	
 	<!-- Success Container (hidden until AJAX success) -->
-	<div class="realm-account-creation__success-container is-hidden">
+	<div class="realm-account-creation__success-container is-hidden" data-user-id="" data-membership-token="">
 		<div class="realm-account-creation__success">
 			<p>Your account is registered and will be finalised soon after review.</p>
+		</div>
+		
+		<!-- Membership Offer Section -->
+		<div class="realm-membership-offer">
+			<h3 class="realm-membership-offer__heading">Become a Member of the Realm.</h3>
+			
+			<div class="realm-membership-offer__content">
+				<p class="realm-membership-offer__description">
+					Enjoy benefits such as amazing discounts on products and access to gaming tables at the Realm location!
+				</p>
+				
+				<ul class="realm-membership-offer__details">
+					<li><strong>Membership Cost:</strong> €<?= $membership_cost ?></li>
+					<li><strong>Valid Until:</strong> <?= $expiryDate->format('F j, Y') ?></li>
+					<li><strong>Renews yearly at the end of the year</strong></li>
+				</ul>
+				
+				<div class="realm-membership-offer__actions">
+					<button type="button" class="button js-realm-membership-apply">
+						Become a Member
+					</button>
+				</div>
+				
+				<!-- Message placeholder for post-submit confirmation -->
+				<div class="realm-membership-offer__message is-hidden"></div>
+			</div>
 		</div>
 	</div>
 	

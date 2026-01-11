@@ -15,12 +15,12 @@
     background-color: #f0f0f1 !important;
 }
 
-.rmm-members-table .member-row.not-a-member {
+.rmm-members-table .member-row.not_active {
     background-color: #950606;
     color: #fff;
 }
 
-.rmm-members-table .member-row.new-member {
+.rmm-members-table .member-row.review {
     background-color: #FFCC00;
     color: #fff;
 }
