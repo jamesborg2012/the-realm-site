@@ -21,3 +21,237 @@ body {
     color: #000;
   }
 }
+
+// Account Creation Form Block
+.realm-account-creation {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  
+  // AJAX Message Container
+  &__message {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    
+    &.is-hidden {
+      display: none;
+    }
+    
+    &--info {
+      background-color: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+    
+    &--error {
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    
+    p {
+      margin: 0;
+    }
+  }
+  
+  // Success Container (hidden until AJAX success)
+  &__success-container {
+    &.is-hidden {
+      display: none;
+    }
+  }
+  
+  // Form Container
+  &__form-container {
+    transition: opacity 0.3s ease;
+    
+    &.is-hidden {
+      display: none;
+    }
+    
+    &.is-submitting {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+  }
+  
+  &__errors {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    
+    ul {
+      margin: 0;
+      padding: 0 0 0 20px;
+      list-style: disc;
+      
+      li {
+        margin: 5px 0;
+      }
+    }
+  }
+  
+  &__success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    
+    p {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+  }
+  
+  &__form {
+    background: #fff;
+    padding: 30px;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+  }
+  
+  &__row {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 20px;
+    
+    &--two-col {
+      grid-template-columns: 1fr;
+      
+      @media screen and (min-width: 768px) {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    
+    &--single-col {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  &__field {
+    display: flex;
+    flex-direction: column;
+    
+    label {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 14px;
+      
+      .required {
+        color: #d32f2f;
+      }
+    }
+    
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"] {
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+      transition: border-color 0.3s ease;
+      
+      &:focus {
+        outline: none;
+        border-color: #000;
+      }
+    }
+    
+    &--checkbox {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      
+      label {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0;
+        font-weight: normal;
+        cursor: pointer;
+        
+        input[type="checkbox"] {
+          margin-right: 10px;
+          cursor: pointer;
+          width: 18px;
+          height: 18px;
+        }
+      }
+    }
+  }
+  
+  &__membership-field {
+    transition: opacity 0.3s ease;
+    
+    &.is-hidden {
+      display: none;
+    }
+  }
+  
+  &__submit {
+    margin-top: 30px;
+    text-align: center;
+    
+    button {
+      background-color: #000;
+      color: #fff;
+      padding: 15px 40px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      position: relative;
+      
+      &:hover:not(:disabled) {
+        background-color: #333;
+      }
+      
+      &:active:not(:disabled) {
+        background-color: #555;
+      }
+      
+      &:disabled,
+      &.is-loading {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      
+      &.is-loading::after {
+        content: '';
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        border: 2px solid #fff;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+    }
+  }
+}
+
+// Utility: Hidden class
+.is-hidden {
+  display: none !important;
+}
+
+// Loading spinner animation
+@keyframes spin {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}

@@ -11,6 +11,7 @@ new TRM_Marketing_Handler();
 new TRM_WC_Hooks();
 new TRM_MB_Hooks();
 new TRM_ACF_Hooks();
+new TRM_AJAX_Hooks();
 new TRM_Core();
 
 function trm_load_parent_stylesheets()
@@ -35,6 +36,18 @@ add_action('wp_enqueue_scripts', 'trm_load_child_theme_external_scripts_styles')
 function trm_load_child_theme_scripts_styles()
 {
     wp_enqueue_script('trm-wc-product-cat-carousel', get_stylesheet_directory_uri() . '/assets/js/wc-product-cat-carousel.js', array('jquery', 'slick-js'), time());
+    
+    // AJAX script for account creation
+    wp_enqueue_script('trm-ajax', get_stylesheet_directory_uri() . '/assets/js/ajax.js', array('jquery'), time(), true);
+    wp_localize_script('trm-ajax', 'trmAjax', array(
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('realm_register_customer'),
+        'messages' => array(
+            'duplicate' => 'The account you are registering already exists.',
+            'error' => 'Please wait and try again later.',
+            'success' => 'Your account is registered and will be finalised soon after review.'
+        )
+    ));
 }
 
 function trm_load_child_theme_external_scripts_styles()
