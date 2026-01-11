@@ -81,6 +81,10 @@ jQuery(document).ready(function($) {
                     // Hide form and show success message with membership offer
                     $formContainer.addClass('is-hidden');
                     $successContainer.removeClass('is-hidden');
+
+                    if (!response.data.membership_number) {
+                        $('.realm-membership-offer').removeClass('is-hidden');
+                    }
                 } else {
                     // Show error message
                     handleError(response.data ? response.data.code : 'server_error');
@@ -94,10 +98,6 @@ jQuery(document).ready(function($) {
                 // Re-enable submit button
                 $submitButton.prop('disabled', false).removeClass('is-loading');
                 $form.removeClass('is-submitting');
-                
-                if (is_realm_member === '0') {
-                    $('.realm-membership-offer').removeClass('is-hidden');
-                }
             }
         });
     });

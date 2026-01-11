@@ -164,7 +164,8 @@ class TRM_AJAX_Hooks extends TRM_Core
         // Return success with user_id and membership token
         wp_send_json_success(array(
             'user_id' => (int) $user_id,
-            'membership_token' => $membership_token
+            'membership_token' => $membership_token,
+            'membership_number' => $membership_number
         ));
     }
     
