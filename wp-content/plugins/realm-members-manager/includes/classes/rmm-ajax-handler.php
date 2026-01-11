@@ -108,6 +108,7 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
 
             if ($amount != $store_discount) {
                 $current_store_coupon->set_amount($store_discount);
+                $current_store_coupon->set_discount_type( 'percent');
                 $current_store_coupon->save();
             }
 
@@ -120,9 +121,10 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
 
             if ($amount != $online_discount) {
                 $current_online_coupon->set_amount($online_discount);
+                $current_online_coupon->set_discount_type( 'percent');
                 $current_online_coupon->save();
             }
-
+            
             $woocommerce->cart->add_discount(sanitize_text_field($membership_number . "onlineonly"));
         }
 
