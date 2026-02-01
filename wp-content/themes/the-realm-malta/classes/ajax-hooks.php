@@ -37,14 +37,48 @@ class TRM_AJAX_Hooks extends TRM_Core
         $is_realm_member = isset($_POST['is_realm_member']) && $_POST['is_realm_member'] === '1';
         $membership_number = isset($_POST['membership_number']) ? sanitize_text_field(wp_unslash($_POST['membership_number'])) : '';
         
+        // Handle passwords carefully - do NOT sanitize to preserve special characters
+        $password = isset($_POST['password']) ? wp_unslash($_POST['password']) : '';
+        $password_confirm = isset($_POST['password_confirm']) ? wp_unslash($_POST['password_confirm']) : '';
+        
         // Validate required fields
-        if (empty($first_name) || empty($last_name) || empty($email) || empty($phone_prefix) || empty($mobile_number)) {
+        if (empty($first_name) || empty($last_name) || empty($email) || empty($phone_prefix) || empty($mobile_number) || empty($password) || empty($password_confirm)) {
             wp_send_json_error(array('code' => 'validation'));
+        }
+        
+        // Validate passwords match
+        if ($password !== $password_confirm) {
+            wp_send_json_error(array('code' => 'validation', 'message' => 'Passwords do not match.'));
+        }
+
+        // Validate password strength requirements
+        $password_errors = array();
+        if (strlen($password) < 8) {
+            $password_errors[] = 'at least 8 characters';
+        }
+        if (!preg_match('/[0-9]/', $password)) {
+            $password_errors[] = 'at least one number';
+        }
+        if (!preg_match('/[!@#$%^&*()_+\-=\[\]{};\':"\\\\|,.<>\/?`~]/', $password)) {
+            $password_errors[] = 'at least one special character';
+        }
+        if (!empty($password_errors)) {
+            wp_send_json_error(array('code' => 'validation', 'message' => 'Password must contain ' . implode(', ', $password_errors) . '.'));
         }
         
         // Validate email format
         if (!is_email($email)) {
             wp_send_json_error(array('code' => 'validation'));
+        }
+        
+        // Validate phone prefix format (must start with + and contain only digits and hyphens)
+        if (!preg_match('/^\+[\d\-]+$/', $phone_prefix)) {
+            wp_send_json_error(array('code' => 'validation', 'message' => 'Invalid phone prefix format.'));
+        }
+        
+        // Validate mobile number does NOT start with "+"
+        if (strpos(trim($mobile_number), '+') === 0) {
+            wp_send_json_error(array('code' => 'mobile_plus_sign', 'message' => 'Please enter your mobile number without the + sign. Use the Phone Prefix dropdown instead.'));
         }
         
         // Validate membership number if realm member
@@ -115,10 +149,7 @@ class TRM_AJAX_Hooks extends TRM_Core
             $counter++;
         }
         
-        // Generate secure password
-        $password = wp_generate_password(16, true);
-        
-        // Create user with customer role
+        // Create user with customer role using user-provided password
         $user_data = array(
             'user_login' => $username,
             'user_pass' => $password,
@@ -154,8 +185,9 @@ class TRM_AJAX_Hooks extends TRM_Core
             update_user_meta($user_id, 'realm_membership_number', $membership_number);
         }
         
-        // Send new user notification
-        wp_new_user_notification($user_id, null, 'both');
+        // Send new user notification to admin only (user already has their password)
+        // Using 'admin' instead of 'both' to avoid sending password reset email to user
+        wp_new_user_notification($user_id, null, 'admin');
         
         // Generate a short-lived token for membership application (prevents abuse)
         $membership_token = wp_generate_password(32, false);

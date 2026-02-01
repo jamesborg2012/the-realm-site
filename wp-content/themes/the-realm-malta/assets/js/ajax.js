@@ -14,6 +14,17 @@ jQuery(document).ready(function($) {
     var $successContainer = $('.realm-account-creation__success-container');
     var $checkbox = $('#is_realm_member');
     var $membershipField = $('.realm-account-creation__membership-field');
+    var $phonePrefix = $('#phone_prefix');
+    var $mobileNumber = $('#mobile_number');
+    
+    // Initialize selectWoo for phone prefix dropdown (if available)
+    if ($phonePrefix.length && typeof $.fn.selectWoo !== 'undefined') {
+        $phonePrefix.selectWoo({
+            placeholder: 'Select Phone Prefix',
+            allowClear: false,
+            width: '100%'
+        });
+    }
     
     // Membership field toggle
     function toggleMembershipField() {
@@ -41,6 +52,80 @@ jQuery(document).ready(function($) {
         // Clear previous messages
         $messageContainer.html('').removeClass('realm-account-creation__message--error realm-account-creation__message--info');
         
+        // Client-side validation: password fields
+        var password = $('#password').val();
+        var passwordConfirm = $('#password_confirm').val();
+        
+        if (!password || !passwordConfirm) {
+            $messageContainer
+                .html('<p>Please enter and confirm your password.</p>')
+                .addClass('realm-account-creation__message--error')
+                .removeClass('is-hidden');
+            
+            // Scroll to message
+            $('html, body').animate({
+                scrollTop: $messageContainer.offset().top - 100
+            }, 300);
+            
+            return;
+        }
+        
+        if (password !== passwordConfirm) {
+            $messageContainer
+                .html('<p>Passwords do not match. Please try again.</p>')
+                .addClass('realm-account-creation__message--error')
+                .removeClass('is-hidden');
+
+            // Scroll to message
+            $('html, body').animate({
+                scrollTop: $messageContainer.offset().top - 100
+            }, 300);
+
+            return;
+        }
+
+        // Client-side validation: password strength requirements
+        var passwordErrors = [];
+        if (password.length < 8) {
+            passwordErrors.push('at least 8 characters');
+        }
+        if (!/[0-9]/.test(password)) {
+            passwordErrors.push('at least one number');
+        }
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)) {
+            passwordErrors.push('at least one special character');
+        }
+
+        if (passwordErrors.length > 0) {
+            $messageContainer
+                .html('<p>Password must contain ' + passwordErrors.join(', ') + '.</p>')
+                .addClass('realm-account-creation__message--error')
+                .removeClass('is-hidden');
+
+            // Scroll to message
+            $('html, body').animate({
+                scrollTop: $messageContainer.offset().top - 100
+            }, 300);
+
+            return;
+        }
+        
+        // Client-side validation: mobile number must NOT start with "+"
+        var mobileValue = $mobileNumber.val().trim();
+        if (mobileValue.startsWith('+')) {
+            $messageContainer
+                .html('<p>Please enter your mobile number without the + sign. Use the Phone Prefix dropdown instead.</p>')
+                .addClass('realm-account-creation__message--error')
+                .removeClass('is-hidden');
+            
+            // Scroll to message
+            $('html, body').animate({
+                scrollTop: $messageContainer.offset().top - 100
+            }, 300);
+            
+            return;
+        }
+        
         // Disable submit button and show loading state
         $submitButton.prop('disabled', true).addClass('is-loading');
         $form.addClass('is-submitting');
@@ -52,6 +137,8 @@ jQuery(document).ready(function($) {
             first_name: $('#first_name').val().trim(),
             last_name: $('#last_name').val().trim(),
             email: $('#user_email').val().trim(),
+            password: $('#password').val(),
+            password_confirm: $('#password_confirm').val(),
             phone_prefix: $('#phone_prefix').val().trim(),
             mobile_number: $('#mobile_number').val().trim(),
             is_realm_member: $checkbox.is(':checked') ? '1' : '0',
@@ -87,7 +174,8 @@ jQuery(document).ready(function($) {
                     }
                 } else {
                     // Show error message
-                    handleError(response.data ? response.data.code : 'server_error');
+                    var errorMsg = (response.data && response.data.message) ? response.data.message : null;
+                    handleError(response.data ? response.data.code : 'server_error', errorMsg);
                 }
             },
             error: function(xhr, status, error) {
@@ -179,14 +267,16 @@ jQuery(document).ready(function($) {
     }
     
     // Error handler
-    function handleError(errorCode) {
+    function handleError(errorCode, errorMessage) {
         console.log(errorCode);
-        var message = trmAjax.messages.error;
+        var message = errorMessage || trmAjax.messages.error;
         
         if (errorCode === 'duplicate') {
             message = trmAjax.messages.duplicate;
         } else if (errorCode === 'validation') {
-            message = 'Please fill in all required fields correctly.';
+            message = errorMessage || 'Please fill in all required fields correctly.';
+        } else if (errorCode === 'mobile_plus_sign') {
+            message = 'Please enter your mobile number without the + sign. Use the Phone Prefix dropdown instead.';
         }
         
         $messageContainer

@@ -37,8 +37,19 @@ function trm_load_child_theme_scripts_styles()
 {
     wp_enqueue_script('trm-wc-product-cat-carousel', get_stylesheet_directory_uri() . '/assets/js/wc-product-cat-carousel.js', array('jquery', 'slick-js'), time());
     
-    // AJAX script for account creation
-    wp_enqueue_script('trm-ajax', get_stylesheet_directory_uri() . '/assets/js/ajax.js', array('jquery'), time(), true);
+    // Enqueue selectWoo (WooCommerce's select2 wrapper) for searchable dropdowns
+    if (function_exists('WC')) {
+        wp_enqueue_style('select2');
+        wp_enqueue_script('selectWoo');
+    }
+    
+    // AJAX script for account creation (with selectWoo dependency if available)
+    $ajax_dependencies = array('jquery');
+    if (function_exists('WC') && wp_script_is('selectWoo', 'registered')) {
+        $ajax_dependencies[] = 'selectWoo';
+    }
+    
+    wp_enqueue_script('trm-ajax', get_stylesheet_directory_uri() . '/assets/js/ajax.js', $ajax_dependencies, time(), true);
     wp_localize_script('trm-ajax', 'trmAjax', array(
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('realm_register_customer'),

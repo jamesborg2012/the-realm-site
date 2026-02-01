@@ -56,6 +56,9 @@ class TRM_WC_Hooks extends TRM_Core
         add_action('pre_get_posts', [$this, 'exclude_products_without_price'], 99);
 
         add_action('woocommerce_before_shop_loop', [$this, 'render_sub_category_filter'], 99);
+
+        // Disable registration form on My Account page (custom registration is handled separately)
+        add_filter('option_woocommerce_enable_myaccount_registration', [$this, 'disable_myaccount_registration']);
     }
 
     /**
@@ -416,6 +419,24 @@ class TRM_WC_Hooks extends TRM_Core
                 }
             }
         }
+    }
+
+    /**
+     * Disable the registration form on the WooCommerce My Account page.
+     * Custom registration is handled via a separate registration page/form.
+     *
+     * Hook: option_woocommerce_enable_myaccount_registration
+     *
+     * @param string $value The option value ('yes' or 'no')
+     * @return string Returns 'no' on the account page, original value elsewhere
+     */
+    public function disable_myaccount_registration($value)
+    {
+        if (is_account_page()) {
+            return 'no';
+        }
+
+        return $value;
     }
 
 }

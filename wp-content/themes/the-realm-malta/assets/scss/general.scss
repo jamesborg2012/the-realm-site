@@ -152,7 +152,9 @@ body {
     
     input[type="text"],
     input[type="email"],
-    input[type="tel"] {
+    input[type="tel"],
+    input[type="password"],
+    select {
       padding: 10px 15px;
       border: 1px solid #ddd;
       border-radius: 4px;
@@ -163,6 +165,23 @@ body {
         outline: none;
         border-color: #000;
       }
+    }
+    
+    select {
+      background-color: #fff;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 20px;
+      padding-right: 40px;
+    }
+
+    &-hint {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
     }
     
     &--checkbox {
@@ -242,6 +261,66 @@ body {
       }
     }
   }
+  
+  // SelectWoo enhancement styling (scoped to this form)
+  .select2-container {
+    width: 100% !important;
+    
+    .select2-selection--single {
+      height: 44px !important;
+      border: 1px solid #ddd !important;
+      border-radius: 4px !important;
+      
+      .select2-selection__rendered {
+        line-height: 42px !important;
+        padding-left: 15px !important;
+        color: #333;
+      }
+      
+      .select2-selection__arrow {
+        height: 42px !important;
+        right: 10px !important;
+      }
+    }
+    
+    &.select2-container--open .select2-selection--single {
+      border-color: #000 !important;
+    }
+  }
+}
+
+// SelectWoo dropdown (rendered outside form container)
+.select2-container--default {
+  .select2-results__option {
+    padding: 10px 15px;
+    font-size: 15px;
+    
+    &--highlighted[aria-selected] {
+      background-color: #f0f0f0 !important;
+      color: #000 !important;
+    }
+    
+    &[aria-selected="true"] {
+      background-color: #000 !important;
+      color: #fff !important;
+    }
+  }
+  
+  .select2-search--dropdown {
+    padding: 10px;
+    
+    .select2-search__field {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: 14px;
+      
+      &:focus {
+        border-color: #000;
+        outline: none;
+      }
+    }
+  }
 }
 
 // Membership Offer Section (inside success container)
@@ -282,7 +361,6 @@ body {
   
   &__details {
     list-style: none;
-    padding: 0;
     margin: 0 0 25px 0;
     background: #fff;
     border: 1px solid #ddd;
