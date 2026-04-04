@@ -1,0 +1,180 @@
+/* ============================================================
+   Profit Analytics — Admin Page Styles
+   Scoped to .trm-pa-wrap
+   ============================================================ */
+
+/* ── Date filter bar ───────────────────────────────────────── */
+
+.trm-pa-filter-bar {
+    margin: 16px 0 8px;
+}
+
+.trm-pa-filter-bar form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.trm-pa-filter-label {
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.trm-pa-date-input {
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-size: 13px;
+    color: #1d2327;
+    background: #fff;
+    cursor: pointer;
+}
+
+.trm-pa-reset {
+    color: #d63638 !important;
+    border-color: #d63638 !important;
+}
+
+.trm-pa-reset:hover {
+    background: #d63638 !important;
+    color: #fff !important;
+}
+
+.trm-pa-range-note {
+    margin: 6px 0 0;
+    font-size: 0.85em;
+    color: #646970;
+}
+
+/* ── Notice ────────────────────────────────────────────────── */
+
+.trm-pa-notice {
+    margin-bottom: 12px !important;
+}
+
+/* ── Summary stats strip ───────────────────────────────────── */
+
+.trm-pa-summary {
+    display: flex;
+    gap: 0;
+    margin: 20px 0 16px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    overflow: hidden;
+    max-width: 900px;
+}
+
+.trm-pa-stat {
+    flex: 1;
+    padding: 16px 20px;
+    text-align: center;
+    border-right: 1px solid #dcdcde;
+}
+
+.trm-pa-stat:last-child {
+    border-right: none;
+}
+
+.trm-pa-stat-value {
+    display: block;
+    font-size: 1.5em;
+    font-weight: 700;
+    color: #1d2327;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.trm-pa-stat-label {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.78em;
+    color: #646970;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.trm-pa-stat--profit .trm-pa-stat-value {
+    color: #00a32a;
+}
+
+.trm-pa-stat sup {
+    font-size: 0.55em;
+    vertical-align: super;
+    color: #d63638;
+    cursor: help;
+}
+
+/* ── Results table ─────────────────────────────────────────── */
+
+.trm-pa-table .column-product {
+    width: 20%;
+}
+
+.trm-pa-table .column-sku {
+    width: 9%;
+}
+
+.trm-pa-table .column-cost-price {
+    width: 10%;
+}
+
+.trm-pa-table .column-period {
+    width: 18%;
+}
+
+.trm-pa-table .column-units {
+    width: 7%;
+}
+
+.trm-pa-table .column-revenue {
+    width: 10%;
+}
+
+.trm-pa-table .column-total-cost {
+    width: 10%;
+}
+
+.trm-pa-table .column-profit {
+    width: 10%;
+}
+
+.trm-pa-table .column-margin {
+    width: 6%;
+}
+
+/* ── Profit colouring ──────────────────────────────────────── */
+
+.trm-pa-positive {
+    color: #00a32a;
+    font-weight: 600;
+}
+
+.trm-pa-negative {
+    color: #d63638;
+    font-weight: 600;
+}
+
+/* ── Misc cell styles ──────────────────────────────────────── */
+
+.trm-pa-na {
+    color: #aaa;
+}
+
+.trm-pa-period {
+    font-size: 0.88em;
+    white-space: nowrap;
+}
+
+/* ── Empty state ───────────────────────────────────────────── */
+
+.trm-pa-empty-state {
+    margin-top: 24px;
+    padding: 24px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    text-align: center;
+    color: #555;
+}
