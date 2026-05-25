@@ -194,7 +194,9 @@ body a {
 }
 .realm-account-creation__field input[type=text],
 .realm-account-creation__field input[type=email],
-.realm-account-creation__field input[type=tel] {
+.realm-account-creation__field input[type=tel],
+.realm-account-creation__field input[type=password],
+.realm-account-creation__field select {
   padding: 10px 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -203,9 +205,26 @@ body a {
 }
 .realm-account-creation__field input[type=text]:focus,
 .realm-account-creation__field input[type=email]:focus,
-.realm-account-creation__field input[type=tel]:focus {
+.realm-account-creation__field input[type=tel]:focus,
+.realm-account-creation__field input[type=password]:focus,
+.realm-account-creation__field select:focus {
   outline: none;
   border-color: #000;
+}
+.realm-account-creation__field select {
+  background-color: #fff;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 20px;
+  padding-right: 40px;
+}
+.realm-account-creation__field-hint {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
 }
 .realm-account-creation__field--checkbox {
   display: flex;
@@ -272,6 +291,52 @@ body a {
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
+.realm-account-creation .select2-container {
+  width: 100% !important;
+}
+.realm-account-creation .select2-container .select2-selection--single {
+  height: 44px !important;
+  border: 1px solid #ddd !important;
+  border-radius: 4px !important;
+}
+.realm-account-creation .select2-container .select2-selection--single .select2-selection__rendered {
+  line-height: 42px !important;
+  padding-left: 15px !important;
+  color: #333;
+}
+.realm-account-creation .select2-container .select2-selection--single .select2-selection__arrow {
+  height: 42px !important;
+  right: 10px !important;
+}
+.realm-account-creation .select2-container.select2-container--open .select2-selection--single {
+  border-color: #000 !important;
+}
+
+.select2-container--default .select2-results__option {
+  padding: 10px 15px;
+  font-size: 15px;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+  background-color: #f0f0f0 !important;
+  color: #000 !important;
+}
+.select2-container--default .select2-results__option[aria-selected=true] {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+.select2-container--default .select2-search--dropdown {
+  padding: 10px;
+}
+.select2-container--default .select2-search--dropdown .select2-search__field {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.select2-container--default .select2-search--dropdown .select2-search__field:focus {
+  border-color: #000;
+  outline: none;
+}
 
 .realm-membership-offer {
   background: #f8f9fa;
@@ -307,7 +372,6 @@ body a {
 }
 .realm-membership-offer__details {
   list-style: none;
-  padding: 0;
   margin: 0 0 25px 0;
   background: #fff;
   border: 1px solid #ddd;
@@ -566,6 +630,257 @@ body.woocommerce-cart .cart-collaterals .cart_totals .checkout-button {
 }
 .product-category-list .slick-prev:before {
   color: #000;
+}
+
+/* Header live-search dropdown — wraps the existing .woocommerce-product-search form.
+ *
+ * The form is given a pill shape with a plain magnifier icon button on the right and an
+ * X clear button that JS toggles based on whether the input has any value. Selectors are
+ * scoped under .trm-live-search and use && to win against Storefront's compiled base styles
+ * (which inject a left-side magnifier on .woocommerce-product-search via a pseudo-element). */
+.trm-live-search {
+  position: relative;
+  width: 100%;
+  /* -- Form / pill ---------------------------------------------------------- */
+  /* -- Panel ---------------------------------------------------------------- */
+  /* List scrolls; the View-all footer stays visible (sticky to the bottom of the panel). */
+}
+.trm-live-search__form, .trm-live-search.trm-live-search .trm-live-search__form, .site-search .trm-live-search__form, .trm-live-search .woocommerce-product-search {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 999px;
+  padding: 4px 8px 4px 18px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  /* Kill Storefront's left-side magnifier (it injects an icon via ::before on the form). */
+}
+.trm-live-search__form::before, .trm-live-search__form::after, .trm-live-search.trm-live-search .trm-live-search__form::before, .trm-live-search.trm-live-search .trm-live-search__form::after, .site-search .trm-live-search__form::before, .site-search .trm-live-search__form::after, .trm-live-search .woocommerce-product-search::before, .trm-live-search .woocommerce-product-search::after {
+  content: none !important;
+  display: none !important;
+}
+.trm-live-search__form:focus-within, .trm-live-search.trm-live-search .trm-live-search__form:focus-within, .site-search .trm-live-search__form:focus-within, .trm-live-search .woocommerce-product-search:focus-within {
+  border-color: #000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+}
+.trm-live-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 8px 0 !important;
+  margin: 0 !important;
+  font-size: 15px;
+  color: #222;
+  box-shadow: none !important;
+  outline: none !important;
+  /* Hide the native browser X (Chrome/Edge on type=search) so the custom one is the only one shown. */
+}
+.trm-live-search__input::-webkit-search-cancel-button, .trm-live-search__input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.trm-live-search__input::placeholder {
+  color: #888;
+}
+.trm-live-search__clear, .trm-live-search__submit {
+  appearance: none;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #000;
+  cursor: pointer;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.trm-live-search__clear:hover, .trm-live-search__clear:focus, .trm-live-search__submit:hover, .trm-live-search__submit:focus {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: #000;
+}
+.trm-live-search__clear:focus-visible, .trm-live-search__submit:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 1px;
+}
+.trm-live-search__clear svg, .trm-live-search__submit svg {
+  display: block;
+}
+.trm-live-search__clear {
+  color: #666;
+}
+.trm-live-search__clear[hidden] {
+  display: none;
+}
+.trm-live-search__clear:hover {
+  color: #000;
+}
+.trm-live-search__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  overflow: hidden; /* Clips the rounded corners cleanly; list scrolls inside. */
+}
+.trm-live-search__panel[hidden] {
+  display: none;
+}
+.trm-live-search__loading {
+  padding: 24px;
+  text-align: center;
+}
+.trm-live-search__spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #cfcfcf;
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: trm-live-search-spin 0.6s linear infinite;
+}
+.trm-live-search__empty {
+  padding: 16px;
+  color: #555;
+  font-size: 14px;
+  text-align: center;
+}
+.trm-live-search__empty p {
+  margin: 0;
+}
+.trm-live-search__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px; /* ~3 result cards (each ~76–80px tall) — 4th peeks to hint scroll */
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.trm-live-search__list::-webkit-scrollbar {
+  width: 8px;
+}
+.trm-live-search__list::-webkit-scrollbar-thumb {
+  background: #cfcfcf;
+  border-radius: 4px;
+}
+.trm-live-search__item {
+  border-bottom: 1px solid #f0f0f0;
+}
+.trm-live-search__item:last-child {
+  border-bottom: none;
+}
+.trm-live-search__item.is-active, .trm-live-search__item:hover {
+  background-color: #f8f8f8;
+}
+.trm-live-search__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  text-decoration: none;
+  color: inherit;
+}
+.trm-live-search__link:hover, .trm-live-search__link:focus {
+  text-decoration: none;
+  color: inherit;
+}
+.trm-live-search__thumb {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  background: #f4f4f4;
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.trm-live-search__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.trm-live-search__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.trm-live-search__title {
+  font-size: 14px;
+  line-height: 1.3;
+  color: #222;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.trm-live-search__title mark {
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
+.trm-live-search__sku {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.trm-live-search__price {
+  font-size: 13px;
+  color: #222;
+  margin-top: 2px;
+}
+.trm-live-search__price del {
+  color: #999;
+  margin-right: 6px;
+}
+.trm-live-search__price ins {
+  background: none;
+  color: #c8102e;
+  font-weight: 600;
+  text-decoration: none;
+}
+.trm-live-search__price .amount {
+  font-weight: 600;
+}
+.trm-live-search__view-all {
+  display: block;
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #000;
+  background: #fafafa;
+  border-top: 1px solid #eee;
+  text-decoration: none;
+}
+.trm-live-search__view-all:hover, .trm-live-search__view-all:focus {
+  background: #f0f0f0;
+  color: #000;
+  text-decoration: none;
+}
+
+@keyframes trm-live-search-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /*# sourceMappingURL=layout.css.map */

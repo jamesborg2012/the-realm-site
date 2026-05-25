@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(grep -v \"^\\\\.$\")",
-      "Bash(ls -la /d/xampp/htdocs/the-realm/wp-content/plugins/realm-*/)"
+      "Bash(ls -la /d/xampp/htdocs/the-realm/wp-content/plugins/realm-*/)",
+      "Bash(npm run *)",
+      "PowerShell(npm run compile:sass 2>&1)"
     ]
   }
 }

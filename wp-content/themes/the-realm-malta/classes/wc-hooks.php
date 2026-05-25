@@ -2,6 +2,12 @@
 
 class TRM_WC_Hooks extends TRM_Core
 {
+    /** Max results in the header live-search dropdown (panel sized to show ~3 with the rest on scroll). */
+    private const LIVE_SEARCH_LIMIT = 6;
+
+    /** Min query length before the AJAX endpoint will run. Mirrored client-side in live-search.js. */
+    private const LIVE_SEARCH_MIN_LEN = 2;
+
     private const COMM_CODE_MAP = [
         'standard' => [
             '95030095',
@@ -76,6 +82,10 @@ class TRM_WC_Hooks extends TRM_Core
         // approach against whatever shipping plugin/config is introduced.
         add_filter('woocommerce_billing_fields', [$this, 'make_billing_address_optional'], 99);
         add_filter('woocommerce_get_country_locale_default', [$this, 'make_locale_address_optional'], 99);
+
+        // Header live-search dropdown (populates the panel rendered by woocommerce/product-searchform.php).
+        add_action('wp_ajax_trm_live_search', [$this, 'handle_live_search']);
+        add_action('wp_ajax_nopriv_trm_live_search', [$this, 'handle_live_search']);
     }
 
     /**
@@ -551,6 +561,106 @@ class TRM_WC_Hooks extends TRM_Core
         }
 
         return $value;
+    }
+
+    /**
+     * AJAX endpoint that powers the header live-search dropdown.
+     *
+     * Action: trm_live_search (both logged-in + nopriv).
+     *
+     * Matches against post_title (via WP's `s`) OR `_sku` meta (via posts_search filter), respects the
+     * same `_price` visibility gate as the storefront, and excludes catalogue terms `exclude-from-search`
+     * / `exclude-from-catalog` so the dropdown can't surface anything the customer couldn't reach.
+     *
+     * Returns a small JSON payload: {html, count, term}. HTML is rendered server-side via the standard
+     * theme view pipeline.
+     */
+    public function handle_live_search()
+    {
+        check_ajax_referer('trm_live_search', 'nonce');
+
+        $term = isset($_GET['q']) ? wc_clean(wp_unslash($_GET['q'])) : '';
+        $term = trim($term);
+
+        if (mb_strlen($term) < self::LIVE_SEARCH_MIN_LEN) {
+            wp_send_json_success([
+                'html' => '',
+                'count' => 0,
+                'term' => $term,
+            ]);
+        }
+
+        $like = '%' . $GLOBALS['wpdb']->esc_like($term) . '%';
+
+        $sku_filter = function ($search, $wp_query) use ($like) {
+            global $wpdb;
+            // Only act on the live-search query, identified by our custom flag.
+            if (!$wp_query->get('trm_live_search')) {
+                return $search;
+            }
+            // Append OR clause matching SKU meta. Append (not replace) so the title match still applies.
+            $sku_sql = $wpdb->prepare(
+                " OR EXISTS (SELECT 1 FROM {$wpdb->postmeta} pm WHERE pm.post_id = {$wpdb->posts}.ID AND pm.meta_key = '_sku' AND pm.meta_value LIKE %s) ",
+                $like
+            );
+            // The default search clause is wrapped as ` AND (...)`. Inject our OR inside that group.
+            // Pattern: ` AND ((... title/excerpt/content ...))` -> ` AND ((...) OR <sku>)`.
+            if (preg_match('/^(\s*AND\s*\()(.*)(\)\s*)$/s', $search, $m)) {
+                return $m[1] . $m[2] . $sku_sql . $m[3];
+            }
+            return $search . $sku_sql;
+        };
+
+        add_filter('posts_search', $sku_filter, 10, 2);
+
+        $query = new WP_Query([
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            's' => $term,
+            'posts_per_page' => self::LIVE_SEARCH_LIMIT,
+            'no_found_rows' => true,
+            'ignore_sticky_posts' => true,
+            'trm_live_search' => true,
+            'meta_query' => [
+                ['key' => '_price', 'compare' => 'EXISTS'],
+                ['key' => '_price', 'value' => '', 'compare' => '!='],
+            ],
+            'tax_query' => [
+                [
+                    'taxonomy' => 'product_visibility',
+                    'field' => 'name',
+                    'terms' => ['exclude-from-search', 'exclude-from-catalog'],
+                    'operator' => 'NOT IN',
+                ],
+            ],
+            'orderby' => 'title',
+            'order' => 'ASC',
+        ]);
+
+        remove_filter('posts_search', $sku_filter, 10);
+
+        $products = [];
+        foreach ($query->posts as $post) {
+            $product = wc_get_product($post->ID);
+            if ($product instanceof WC_Product) {
+                $products[] = $product;
+            }
+        }
+
+        $html = $this->render_template('search/live-search-results', [
+            'products' => $products,
+            'term' => $term,
+            'search_url' => add_query_arg(
+                ['s' => $term, 'post_type' => 'product'],
+                home_url('/')
+            ),
+        ]);
+
+        wp_send_json_success([
+            'html' => $html,
+            'count' => count($products),
+            'term' => $term,
+        ]);
     }
 
 }

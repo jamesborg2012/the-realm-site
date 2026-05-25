@@ -1,0 +1,287 @@
+@use "variables";
+
+/* Header live-search dropdown — wraps the existing .woocommerce-product-search form.
+ *
+ * The form is given a pill shape with a plain magnifier icon button on the right and an
+ * X clear button that JS toggles based on whether the input has any value. Selectors are
+ * scoped under .trm-live-search and use && to win against Storefront's compiled base styles
+ * (which inject a left-side magnifier on .woocommerce-product-search via a pseudo-element). */
+.trm-live-search {
+  position: relative;
+  width: 100%;
+
+  /* -- Form / pill ---------------------------------------------------------- */
+
+  &__form,
+  &.trm-live-search &__form,
+  .site-search &__form,
+  & .woocommerce-product-search {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 999px;
+    padding: 4px 8px 4px 18px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    /* Kill Storefront's left-side magnifier (it injects an icon via ::before on the form). */
+    &::before,
+    &::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    &:focus-within {
+      border-color: #000;
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+    }
+  }
+
+  &__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0 !important;
+    background: transparent !important;
+    padding: 8px 0 !important;
+    margin: 0 !important;
+    font-size: 15px;
+    color: #222;
+    box-shadow: none !important;
+    outline: none !important;
+
+    /* Hide the native browser X (Chrome/Edge on type=search) so the custom one is the only one shown. */
+    &::-webkit-search-cancel-button,
+    &::-webkit-search-decoration {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    &::placeholder {
+      color: #888;
+    }
+  }
+
+  &__clear,
+  &__submit {
+    appearance: none;
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: #000;
+    cursor: pointer;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    line-height: 1;
+    flex: 0 0 auto;
+
+    &:hover,
+    &:focus {
+      background: rgba(0, 0, 0, 0.06) !important;
+      color: #000;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #000;
+      outline-offset: 1px;
+    }
+
+    svg {
+      display: block;
+    }
+  }
+
+  &__clear {
+    color: #666;
+    &[hidden] { display: none; }
+    &:hover { color: #000; }
+  }
+
+  /* -- Panel ---------------------------------------------------------------- */
+
+  &__panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    overflow: hidden; /* Clips the rounded corners cleanly; list scrolls inside. */
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  &__loading {
+    padding: 24px;
+    text-align: center;
+  }
+
+  &__spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #cfcfcf;
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: trm-live-search-spin 0.6s linear infinite;
+  }
+
+  &__empty {
+    padding: 16px;
+    color: #555;
+    font-size: 14px;
+    text-align: center;
+
+    p { margin: 0; }
+  }
+
+  /* List scrolls; the View-all footer stays visible (sticky to the bottom of the panel). */
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 260px; /* ~3 result cards (each ~76–80px tall) — 4th peeks to hint scroll */
+    overflow-y: auto;
+
+    scrollbar-width: thin;
+    &::-webkit-scrollbar { width: 8px; }
+    &::-webkit-scrollbar-thumb { background: #cfcfcf; border-radius: 4px; }
+  }
+
+  &__item {
+    border-bottom: 1px solid #f0f0f0;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &.is-active,
+    &:hover {
+      background-color: #f8f8f8;
+    }
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    text-decoration: none;
+    color: inherit;
+
+    &:hover,
+    &:focus {
+      text-decoration: none;
+      color: inherit;
+    }
+  }
+
+  &__thumb {
+    flex: 0 0 56px;
+    width: 56px;
+    height: 56px;
+    background: #f4f4f4;
+    border-radius: 3px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+  }
+
+  &__body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__title {
+    font-size: 14px;
+    line-height: 1.3;
+    color: #222;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
+    mark {
+      background: transparent;
+      color: inherit;
+      font-weight: 700;
+      text-decoration: underline;
+    }
+  }
+
+  &__sku {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  &__price {
+    font-size: 13px;
+    color: #222;
+    margin-top: 2px;
+
+    del {
+      color: #999;
+      margin-right: 6px;
+    }
+
+    ins {
+      background: none;
+      color: #c8102e;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .amount {
+      font-weight: 600;
+    }
+  }
+
+  &__view-all {
+    display: block;
+    padding: 12px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #000;
+    background: #fafafa;
+    border-top: 1px solid #eee;
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+      background: #f0f0f0;
+      color: #000;
+      text-decoration: none;
+    }
+  }
+}
+
+@keyframes trm-live-search-spin {
+  to { transform: rotate(360deg); }
+}

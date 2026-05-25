@@ -65,6 +65,15 @@ function trm_load_child_theme_scripts_styles()
             'membershipSuccess' => 'Thank you for applying to be a member! You will be contacted shortly to finalise payment and join this amazing community!'
         )
     ));
+
+    // Header live-search dropdown (powers woocommerce/product-searchform.php override).
+    wp_enqueue_script('trm-live-search', get_stylesheet_directory_uri() . '/assets/js/live-search.js', array('jquery'), time(), true);
+    wp_localize_script('trm-live-search', 'trmLiveSearch', array(
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('trm_live_search'),
+        'minLen' => 2,
+        'debounceMs' => 250,
+    ));
 }
 
 function trm_load_child_theme_external_scripts_styles()
