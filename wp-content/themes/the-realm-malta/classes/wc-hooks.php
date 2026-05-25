@@ -86,6 +86,14 @@ class TRM_WC_Hooks extends TRM_Core
         // Header live-search dropdown (populates the panel rendered by woocommerce/product-searchform.php).
         add_action('wp_ajax_trm_live_search', [$this, 'handle_live_search']);
         add_action('wp_ajax_nopriv_trm_live_search', [$this, 'handle_live_search']);
+
+        // Store's Revolut number: stored as a standalone option `trm_revolut_number` and configured
+        // under WC → Settings → General. When set, the Cash on Delivery description at checkout gets
+        // a "Payment may be made out to {number}" line appended. We don't tie this to the COD gateway's
+        // own settings because WC 9.5+ renders the per-gateway offline-payment settings via a React UI
+        // that ignores fields added through `woocommerce_settings_api_form_fields_cod`.
+        add_filter('woocommerce_general_settings', [$this, 'add_revolut_general_setting']);
+        add_filter('woocommerce_gateway_description', [$this, 'append_revolut_to_cod_description'], 10, 2);
     }
 
     /**
@@ -575,6 +583,82 @@ class TRM_WC_Hooks extends TRM_Core
      * Returns a small JSON payload: {html, count, term}. HTML is rendered server-side via the standard
      * theme view pipeline.
      */
+    /**
+     * Add a "Revolut Number" text field to WC → Settings → General, stored in its own option
+     * `trm_revolut_number`. This is read by `append_revolut_to_cod_description` to extend the
+     * Cash on Delivery description at checkout.
+     *
+     * Lives in General (not on the COD gateway itself) because WC 9.5+ renders the per-gateway
+     * offline-payment settings via a React UI that doesn't surface fields added through
+     * `woocommerce_settings_api_form_fields_cod`. Decoupling it also lets us reuse the value if
+     * another payment method ever needs it.
+     *
+     * Hook: woocommerce_general_settings
+     *
+     * @param array $settings
+     * @return array
+     */
+    public function add_revolut_general_setting($settings)
+    {
+        $section = [
+            [
+                'title' => __('The Realm — Payment Info', 'the-realm-malta'),
+                'type'  => 'title',
+                'desc'  => '',
+                'id'    => 'trm_payment_info_options',
+            ],
+            [
+                'title'    => __('Revolut Number', 'the-realm-malta'),
+                'desc'     => __('Mobile number customers should send Revolut payments to (e.g. +356 79xx xxxx). When set, the Cash on Delivery description at checkout shows "Payment may be made out to {number}" beneath the existing description. Leave empty to keep the existing description only.', 'the-realm-malta'),
+                'id'       => 'trm_revolut_number',
+                'type'     => 'text',
+                'default'  => '',
+                'desc_tip' => false,
+            ],
+            [
+                'type' => 'sectionend',
+                'id'   => 'trm_payment_info_options',
+            ],
+        ];
+
+        return array_merge($settings, $section);
+    }
+
+    /**
+     * Append "Payment may be made out to {revolut number}" to the Cash on Delivery description
+     * at checkout when `trm_revolut_number` is set under WC → Settings → General.
+     *
+     * The incoming $description has already been run through wptexturize + wpautop by WC, so we
+     * append a new `<p>` rather than mutating the existing block.
+     *
+     * Hook: woocommerce_gateway_description (priority 10)
+     *
+     * @param string $description
+     * @param string $payment_id
+     * @return string
+     */
+    public function append_revolut_to_cod_description($description, $payment_id)
+    {
+        if ($payment_id !== 'cod') {
+            return $description;
+        }
+
+        $revolut_number = get_option('trm_revolut_number', '');
+        $revolut_number = is_string($revolut_number) ? trim($revolut_number) : '';
+
+        if ($revolut_number === '') {
+            return $description;
+        }
+
+        $message = sprintf(
+            /* translators: %s: store's Revolut mobile number */
+            __('Payment may be made out to %s', 'the-realm-malta'),
+            esc_html($revolut_number)
+        );
+
+        return $description . '<p>' . $message . '</p>';
+    }
+
     public function handle_live_search()
     {
         check_ajax_referer('trm_live_search', 'nonce');
