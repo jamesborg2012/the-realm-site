@@ -59,6 +59,44 @@ class TRM_WC_Hooks extends TRM_Core
 
         // Disable registration form on My Account page (custom registration is handled separately)
         add_filter('option_woocommerce_enable_myaccount_registration', [$this, 'disable_myaccount_registration']);
+
+        // Phone is optional everywhere on the site — flip WC's checkout billing_phone field accordingly.
+        add_filter('woocommerce_billing_fields', [$this, 'make_billing_phone_optional'], 99);
+        add_filter('woocommerce_default_address_fields', [$this, 'make_address_phone_optional'], 99);
+    }
+
+    /**
+     * Mark the WC billing phone field as optional at checkout / My Account → Addresses.
+     *
+     * Hook: woocommerce_billing_fields (priority 99)
+     *
+     * @param array $fields
+     * @return array
+     */
+    public function make_billing_phone_optional($fields)
+    {
+        if (isset($fields['billing_phone'])) {
+            $fields['billing_phone']['required'] = false;
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Mirror the optional-phone change on the shared address field schema (covers shipping / address book).
+     *
+     * Hook: woocommerce_default_address_fields (priority 99)
+     *
+     * @param array $fields
+     * @return array
+     */
+    public function make_address_phone_optional($fields)
+    {
+        if (isset($fields['phone'])) {
+            $fields['phone']['required'] = false;
+        }
+
+        return $fields;
     }
 
     /**

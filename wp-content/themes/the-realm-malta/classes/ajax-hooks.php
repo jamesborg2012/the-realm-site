@@ -41,8 +41,8 @@ class TRM_AJAX_Hooks extends TRM_Core
         $password = isset($_POST['password']) ? wp_unslash($_POST['password']) : '';
         $password_confirm = isset($_POST['password_confirm']) ? wp_unslash($_POST['password_confirm']) : '';
         
-        // Validate required fields
-        if (empty($first_name) || empty($last_name) || empty($email) || empty($phone_prefix) || empty($mobile_number) || empty($password) || empty($password_confirm)) {
+        // Validate required fields (phone fields are optional)
+        if (empty($first_name) || empty($last_name) || empty($email) || empty($password) || empty($password_confirm)) {
             wp_send_json_error(array('code' => 'validation'));
         }
         
@@ -71,58 +71,67 @@ class TRM_AJAX_Hooks extends TRM_Core
             wp_send_json_error(array('code' => 'validation'));
         }
         
-        // Validate phone prefix format (must start with + and contain only digits and hyphens)
-        if (!preg_match('/^\+[\d\-]+$/', $phone_prefix)) {
-            wp_send_json_error(array('code' => 'validation', 'message' => 'Invalid phone prefix format.'));
+        // Phone is optional. Only validate / dup-check when the user actually provided a mobile number.
+        $has_phone = !empty($mobile_number);
+        $billing_phone = '';
+
+        if ($has_phone) {
+            // Validate phone prefix format when supplied (must start with + and contain only digits and hyphens)
+            if (!empty($phone_prefix) && !preg_match('/^\+[\d\-]+$/', $phone_prefix)) {
+                wp_send_json_error(array('code' => 'validation', 'message' => 'Invalid phone prefix format.'));
+            }
+
+            // Validate mobile number does NOT start with "+"
+            if (strpos(trim($mobile_number), '+') === 0) {
+                wp_send_json_error(array('code' => 'mobile_plus_sign', 'message' => 'Please enter your mobile number without the + sign. Use the Phone Prefix dropdown instead.'));
+            }
+
+            // Normalize and combine phone (prefix may be empty)
+            $billing_phone = trim(trim($phone_prefix) . ' ' . trim($mobile_number));
         }
-        
-        // Validate mobile number does NOT start with "+"
-        if (strpos(trim($mobile_number), '+') === 0) {
-            wp_send_json_error(array('code' => 'mobile_plus_sign', 'message' => 'Please enter your mobile number without the + sign. Use the Phone Prefix dropdown instead.'));
-        }
-        
+
         // Validate membership number if realm member
         if ($is_realm_member && empty($membership_number)) {
             wp_send_json_error(array('code' => 'validation'));
         }
-        
-        // Normalize and combine phone
-        $billing_phone = trim($phone_prefix) . ' ' . trim($mobile_number);
-        $normalized_phone = preg_replace('/[^0-9]/', '', $billing_phone);
-        
+
         // Check for duplicates
-        
+
         // 1. Email duplicate check
         if (email_exists($email)) {
             wp_send_json_error(array('code' => 'duplicate'));
         }
-        
-        // 2. Phone duplicate check
-        $phone_users = get_users(array(
-            'meta_key' => 'billing_phone',
-            'meta_value' => $billing_phone,
-            'number' => 1,
-            'fields' => 'ID'
-        ));
-        
-        // If exact match not found, check normalized phone
-        if (empty($phone_users)) {
-            $all_users_with_phone = get_users(array(
+
+        // 2. Phone duplicate check — only when a phone was provided
+        if ($has_phone) {
+            $normalized_phone = preg_replace('/[^0-9]/', '', $billing_phone);
+
+            $phone_users = get_users(array(
                 'meta_key' => 'billing_phone',
-                'fields' => array('ID'),
-                'number' => -1
+                'meta_value' => $billing_phone,
+                'number' => 1,
+                'fields' => 'ID'
             ));
-            
-            foreach ($all_users_with_phone as $user) {
-                $existing_phone = get_user_meta($user->ID, 'billing_phone', true);
-                $existing_normalized = preg_replace('/[^0-9]/', '', $existing_phone);
-                
-                if ($existing_normalized === $normalized_phone) {
-                    wp_send_json_error(array('code' => 'duplicate'));
+
+            // If exact match not found, check normalized phone
+            if (empty($phone_users)) {
+                $all_users_with_phone = get_users(array(
+                    'meta_key' => 'billing_phone',
+                    'fields' => array('ID'),
+                    'number' => -1
+                ));
+
+                foreach ($all_users_with_phone as $user) {
+                    $existing_phone = get_user_meta($user->ID, 'billing_phone', true);
+                    $existing_normalized = preg_replace('/[^0-9]/', '', $existing_phone);
+
+                    if ($existing_normalized !== '' && $existing_normalized === $normalized_phone) {
+                        wp_send_json_error(array('code' => 'duplicate'));
+                    }
                 }
+            } else {
+                wp_send_json_error(array('code' => 'duplicate'));
             }
-        } else {
-            wp_send_json_error(array('code' => 'duplicate'));
         }
         
         // 3. Membership number duplicate check (only if provided)
@@ -171,17 +180,20 @@ class TRM_AJAX_Hooks extends TRM_Core
         update_user_meta($user_id, 'billing_first_name', $first_name);
         update_user_meta($user_id, 'billing_last_name', $last_name);
         update_user_meta($user_id, 'billing_email', $email);
-        update_user_meta($user_id, 'billing_phone', $billing_phone);
-        
-        // Set membership number if provided
+
+        // Phone meta only written when actually supplied — avoids storing a stray prefix
+        // (e.g. "+356 ") with no number against the user.
+        if ($has_phone) {
+            update_user_meta($user_id, 'billing_phone', $billing_phone);
+            if (!empty($phone_prefix)) {
+                update_user_meta($user_id, 'realm_phone_prefix', $phone_prefix);
+            }
+            update_user_meta($user_id, 'realm_mobile_number', $mobile_number);
+        }
+
+        // Set membership number if provided — kept on both keys for backward compat
         if ($is_realm_member && !empty($membership_number)) {
             update_user_meta($user_id, 'rmm_membership_number', $membership_number);
-        }
-        
-        // Set additional realm meta (maintain backward compatibility with existing meta keys)
-        update_user_meta($user_id, 'realm_phone_prefix', $phone_prefix);
-        update_user_meta($user_id, 'realm_mobile_number', $mobile_number);
-        if ($is_realm_member && !empty($membership_number)) {
             update_user_meta($user_id, 'realm_membership_number', $membership_number);
         }
         

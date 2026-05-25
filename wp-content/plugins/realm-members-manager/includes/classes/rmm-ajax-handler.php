@@ -170,7 +170,9 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
 
         update_user_meta($user_id, 'billing_first_name', $form_data['fname']);
         update_user_meta($user_id, 'billing_last_name', $form_data['lname']);
-        update_user_meta($user_id, 'billing_phone', $form_data['phone']);
+        if (!empty($form_data['phone'])) {
+            update_user_meta($user_id, 'billing_phone', $form_data['phone']);
+        }
         update_user_meta($user_id, 'billing_email', $form_data['email']);
         update_user_meta($user_id, 'rmm_membership_status', 'new');
 

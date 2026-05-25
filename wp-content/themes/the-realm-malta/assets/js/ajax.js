@@ -110,9 +110,9 @@ jQuery(document).ready(function($) {
             return;
         }
         
-        // Client-side validation: mobile number must NOT start with "+"
+        // Client-side validation: mobile number must NOT start with "+" (phone is optional)
         var mobileValue = $mobileNumber.val().trim();
-        if (mobileValue.startsWith('+')) {
+        if (mobileValue && mobileValue.startsWith('+')) {
             $messageContainer
                 .html('<p>Please enter your mobile number without the + sign. Use the Phone Prefix dropdown instead.</p>')
                 .addClass('realm-account-creation__message--error')

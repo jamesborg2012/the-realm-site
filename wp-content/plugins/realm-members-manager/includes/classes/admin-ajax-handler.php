@@ -80,7 +80,10 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
             $coupon_expiry_date = date('Y-m-d', strtotime($expiry_date));
         }
 
-        update_user_meta($user_id, 'billing_phone', $member_data['member_phone']);
+        // Phone is optional — only persist when provided.
+        if (!empty($member_data['member_phone'])) {
+            update_user_meta($user_id, 'billing_phone', sanitize_text_field($member_data['member_phone']));
+        }
         update_user_meta($user_id, 'rmm_membership_status', $member_status);
         update_user_meta($user_id, 'rmm_membership_expire', $expiry_date);
         update_user_meta($user_id, 'rmm_membership_number', $member_number);
@@ -146,6 +149,9 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
         $expires_raw = isset($data['rmm_membership_expires']) ? $data['rmm_membership_expires'] : '';
         $first_name = isset($data['rmm_member_first_name']) ? sanitize_text_field($data['rmm_member_first_name']) : '';
         $last_name = isset($data['rmm_member_last_name']) ? sanitize_text_field($data['rmm_member_last_name']) : '';
+        // Phone is optional: present-but-empty clears the stored value; absent leaves it alone.
+        $has_phone_field = array_key_exists('rmm_member_phone', $data);
+        $phone = $has_phone_field ? sanitize_text_field($data['rmm_member_phone']) : '';
 
         if ($user_id <= 0) {
             wp_send_json_error([
@@ -225,6 +231,14 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
         ]);
         update_user_meta($user_id, 'billing_first_name', $first_name);
         update_user_meta($user_id, 'billing_last_name', $last_name);
+
+        if ($has_phone_field) {
+            if ($phone === '') {
+                delete_user_meta($user_id, 'billing_phone');
+            } else {
+                update_user_meta($user_id, 'billing_phone', $phone);
+            }
+        }
 
         wp_send_json_success([
             'status' => 'updated'

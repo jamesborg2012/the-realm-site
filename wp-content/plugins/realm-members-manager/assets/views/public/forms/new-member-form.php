@@ -37,7 +37,7 @@ $expiryDate = new DateTime("$year-12-31");
         </div>
         <div class="form-row">
             <div class="col">
-                <input type="text" name="phone" id="phone" placeholder="+356 7777 7777">
+                <input type="text" name="phone" id="phone" placeholder="+356 7777 7777 (optional)">
             </div>
             <div class="col">
                 <input type="email" name="email" id="email" placeholder="email@gmail.com">

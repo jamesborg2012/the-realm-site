@@ -25,7 +25,7 @@ $expires_max = date('Y-12-31', strtotime('+1 year'));
 $email = $user->user_email;
 $phone = get_user_meta($user->ID, 'billing_phone', true);
 
-$contact_details = "Phone: " . $phone . ' - Email: ' . $email;
+$contact_details = 'Email: ' . $email;
 
 $membership_status_options = [
     'active' => 'Member',
@@ -51,6 +51,12 @@ $membership_status_options = [
             <label for="rmm_member_last_name">
                 Last Name
                 <input type="text" name="rmm_member_last_name" id="rmm_member_last_name" value="<?= esc_attr($user->last_name) ?>" required>
+            </label>
+        </div>
+        <div class="member-phone-container">
+            <label for="rmm_member_phone">
+                Phone Number <span class="optional-hint">(optional)</span>
+                <input type="text" name="rmm_member_phone" id="rmm_member_phone" value="<?= esc_attr($phone) ?>">
             </label>
         </div>
         <div class="membership-number-container">

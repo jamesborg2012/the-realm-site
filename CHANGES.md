@@ -15,7 +15,6 @@ See [CLAUDE.md](CLAUDE.md) for the architecture map.
 
 ## Backlog
 
-- [ ] **2. Make phone optional at registration**
 - [ ] **3. Make address optional at checkout**
 - [ ] **4. Search improvements**
 - [ ] **5. Client mobile number and email address in header**
@@ -32,6 +31,7 @@ _(none)_
 
 ## Done
 
+- [x] **2. Make phone optional at registration** — phone is no longer required anywhere a customer signs up or is edited. Theme Account Creation block dropped the `required` attribute and `*` markers on Phone Prefix / Mobile Number; `TRM_AJAX_Hooks::handle_customer_registration` only validates prefix format, the no-leading-`+` rule, and the dup-phone check when a mobile is actually supplied, and only writes `billing_phone` / `realm_phone_prefix` / `realm_mobile_number` user meta in that case (so empty submissions don't store a stray prefix). Realm Members Manager: admin create modal phone label tagged `(optional)` and `create_new_member` only writes `billing_phone` when set; the admin **edit** modal now has an editable, optional Phone Number input wired into `update_member_details` (empty = delete the meta, populated = update it); the public `register_new_member` shortcode form placeholder reads `(optional)` and the handler skips the `billing_phone` write when blank. WC checkout: `TRM_WC_Hooks` adds `woocommerce_billing_fields` + `woocommerce_default_address_fields` filters that flip `billing_phone`/`phone` `required` to `false`, so the checkout + My Account address pages no longer block on a missing phone. `update_user_billing_meta_on_order` already skipped empty values — left untouched.
 - [x] **1. Member number fix** — added editable membership number to the admin edit modal in `realm-members-manager`. Field is disabled once a number is set (to protect coupon code logic) and required when empty; server validates non-empty + uniqueness against `rmm_membership_number`. Assigning a number to a previously-numberless member now also creates the STOREDISC + ONLINEONLY coupons (coupon-creation logic extracted into a shared private helper so create + edit flows share it). Edit modal also gained: editable First / Last Name (syncs to `first_name`, `last_name`, `billing_first_name`, `billing_last_name`); a native date picker for expiry bounded to today−1y → end of next year, with stored values normalised to `Y-m-d` on render; and automatic sync of both member coupons' `date_expires` whenever the membership expiry is changed.
 
 ## Dropped

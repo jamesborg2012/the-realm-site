@@ -168,7 +168,7 @@ $expiryDate = new DateTime("$year-12-31");
 		<div class="realm-account-creation__row realm-account-creation__row--two-col">
 			<div class="realm-account-creation__field">
 				<label for="phone_prefix">
-					Phone Prefix <span class="required">*</span>
+					Phone Prefix
 				</label>
 				<?php
 				// Comprehensive list of country calling codes (E.164 compliant)
@@ -418,12 +418,11 @@ $expiryDate = new DateTime("$year-12-31");
 				// Get selected value (preserve on validation failure)
 				$selected_prefix = !empty($form_data['phone_prefix']) ? $form_data['phone_prefix'] : '+356';
 				?>
-				<select 
-					id="phone_prefix" 
-					name="phone_prefix" 
+				<select
+					id="phone_prefix"
+					name="phone_prefix"
 					class="realm-phone-prefix-select"
 					autocomplete="new-password"
-					required
 				>
 					<option value="">Select Phone Prefix</option>
 					<?php
@@ -449,15 +448,14 @@ $expiryDate = new DateTime("$year-12-31");
 			
 			<div class="realm-account-creation__field">
 				<label for="mobile_number">
-					Mobile Number <span class="required">*</span>
+					Mobile Number
 				</label>
-				<input 
-					type="tel" 
-					id="mobile_number" 
-					name="mobile_number" 
-					value="<?php echo esc_attr( $form_data['mobile_number'] ); ?>" 
+				<input
+					type="tel"
+					id="mobile_number"
+					name="mobile_number"
+					value="<?php echo esc_attr( $form_data['mobile_number'] ); ?>"
 					autocomplete="new-password"
-					required 
 				/>
 			</div>
 		</div>

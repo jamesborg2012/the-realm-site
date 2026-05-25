@@ -79,7 +79,7 @@
                 <input name="rmm_member_email" id="rmm_member_email">
             </label>
             <label>
-                Phone Number:
+                Phone Number (optional):
                 <input name="rmm_member_phone" id="rmm_member_phone">
             </label>
         </div>
