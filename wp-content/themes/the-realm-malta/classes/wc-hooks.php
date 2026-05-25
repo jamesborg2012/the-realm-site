@@ -63,6 +63,10 @@ class TRM_WC_Hooks extends TRM_Core
         // Phone is optional everywhere on the site — flip WC's checkout billing_phone field accordingly.
         add_filter('woocommerce_billing_fields', [$this, 'make_billing_phone_optional'], 99);
         add_filter('woocommerce_default_address_fields', [$this, 'make_address_phone_optional'], 99);
+
+        // Billing address is optional at checkout (shipping is not yet enabled; when it is, the shipping
+        // address must remain required, so this filter only touches billing fields, not the shared schema).
+        add_filter('woocommerce_billing_fields', [$this, 'make_billing_address_optional'], 99);
     }
 
     /**
@@ -94,6 +98,39 @@ class TRM_WC_Hooks extends TRM_Core
     {
         if (isset($fields['phone'])) {
             $fields['phone']['required'] = false;
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Flip every billing address field to optional at checkout / My Account billing address.
+     *
+     * Identity fields (first/last name, email) are deliberately left as-is — the brief was only about
+     * the address. Filtering `woocommerce_billing_fields` rather than `woocommerce_default_address_fields`
+     * keeps the shipping address schema untouched, so when shipping is enabled later it remains required
+     * by default.
+     *
+     * Hook: woocommerce_billing_fields (priority 99)
+     *
+     * @param array $fields
+     * @return array
+     */
+    public function make_billing_address_optional($fields)
+    {
+        $optional_keys = [
+            'billing_country',
+            'billing_address_1',
+            'billing_address_2',
+            'billing_city',
+            'billing_state',
+            'billing_postcode',
+        ];
+
+        foreach ($optional_keys as $key) {
+            if (isset($fields[$key])) {
+                $fields[$key]['required'] = false;
+            }
         }
 
         return $fields;
