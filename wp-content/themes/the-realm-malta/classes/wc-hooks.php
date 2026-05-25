@@ -64,9 +64,18 @@ class TRM_WC_Hooks extends TRM_Core
         add_filter('woocommerce_billing_fields', [$this, 'make_billing_phone_optional'], 99);
         add_filter('woocommerce_default_address_fields', [$this, 'make_address_phone_optional'], 99);
 
-        // Billing address is optional at checkout (shipping is not yet enabled; when it is, the shipping
-        // address must remain required, so this filter only touches billing fields, not the shared schema).
+        // Billing address is optional at checkout. Two filters are needed:
+        //   1. woocommerce_billing_fields — controls the PHP-side initial render + server validation.
+        //   2. woocommerce_get_country_locale_default — controls the JS-side locale sync
+        //      (assets/js/frontend/address-i18n.js re-applies required asterisks on country change /
+        //      page load, reading from the default locale dataset; without this, JS overwrites the
+        //      PHP filter result for address_1 / city / postcode / state / address_2).
+        // When shipping is eventually enabled, the locale filter will also flip shipping fields to
+        // optional (the JS selectors cover #shipping_* too). Restore shipping requirement then by
+        // either adding a woocommerce_shipping_fields filter + custom JS, or by re-checking the
+        // approach against whatever shipping plugin/config is introduced.
         add_filter('woocommerce_billing_fields', [$this, 'make_billing_address_optional'], 99);
+        add_filter('woocommerce_get_country_locale_default', [$this, 'make_locale_address_optional'], 99);
     }
 
     /**
@@ -134,6 +143,36 @@ class TRM_WC_Hooks extends TRM_Core
         }
 
         return $fields;
+    }
+
+    /**
+     * Flip the JS-side "default" locale entries so the address-i18n script doesn't re-add the required
+     * asterisk after the PHP filter has marked these fields optional.
+     *
+     * WC ships a `locale` dataset to the browser; on country change / page load, address-i18n.js reads
+     * each entry's `required` flag and re-syncs the DOM. The PHP `woocommerce_billing_fields` filter
+     * controls the initial render and server-side validation but the JS will overwrite the displayed
+     * state from this locale data — hence the need to match the change here.
+     *
+     * Only the keys present in `WC_Countries::get_country_locale_field_selectors()` are touched
+     * (address_1, address_2, city, state, postcode); country isn't part of that JS sync.
+     *
+     * Hook: woocommerce_get_country_locale_default (priority 99)
+     *
+     * @param array $locale
+     * @return array
+     */
+    public function make_locale_address_optional($locale)
+    {
+        $optional_keys = ['address_1', 'address_2', 'city', 'state', 'postcode'];
+
+        foreach ($optional_keys as $key) {
+            if (isset($locale[$key])) {
+                $locale[$key]['required'] = false;
+            }
+        }
+
+        return $locale;
     }
 
     /**
