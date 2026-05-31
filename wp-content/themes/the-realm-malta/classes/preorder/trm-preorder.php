@@ -32,14 +32,11 @@ class TRM_Preorder extends TRM_Core
     /** Per-product live count of pre-ordered quantity across active (non-cancelled) orders. */
     const META_ORDERED_COUNT = '_trm_preorder_ordered_count';
 
-    /** Order-level flag: 'yes' once this order's quantities are applied to the product counts. */
-    const META_ORDER_COUNTED = '_trm_preorder_counted';
-
-    /** Order-item meta recording the quantity this line contributed, so it can be reversed exactly. */
-    const ITEM_META_COUNTED_QTY = '_trm_preorder_counted_qty';
-
-    /** Order-item meta recording which (parent) product id the line was counted against. */
+    /** Order-item meta recording which (parent) product id the line is counted against. */
     const ITEM_META_PRODUCT_ID = '_trm_preorder_counted_product_id';
+
+    /** Order-item meta recording how much of this line is currently applied to the product count. */
+    const ITEM_META_APPLIED_QTY = '_trm_preorder_applied_qty';
 
     /** Editable checkout notice text. */
     const OPTION_PAYMENT_MESSAGE = 'trm_preorder_payment_message';
@@ -65,14 +62,22 @@ class TRM_Preorder extends TRM_Core
         // Checkout: payment-required notice after the order total.
         add_action('woocommerce_review_order_after_order_total', [$this, 'render_checkout_notice']);
 
-        // Order-count tracking: count on placement, reverse on cancel / refund / fail.
+        // Order-count tracking. Every relevant event funnels into reconcile_order(), which recomputes
+        // each pre-order line's contribution to the product count and applies only the delta — so it's
+        // fully idempotent however many of these fire for a single order.
         //   - woocommerce_checkout_order_processed: the storefront path (order is fully populated).
         //   - woocommerce_order_status_changed: admin-created orders and every later transition
-        //     (idempotent via the order-level flag, so the inevitable overlap doesn't double-count).
-        // woocommerce_new_order is deliberately NOT used: it can fire mid-construction before line
-        // items are attached, which would set the "counted" flag against an empty order and undercount.
+        //     (cancelled / refunded / failed stop counting; restoring to an active status re-counts).
+        //   - woocommerce_order_refunded: partial AND full refunds — a partial refund doesn't change
+        //     the order status, so this is the only signal for it; reduces the count per line by the
+        //     refunded quantity.
+        //   - woocommerce_refund_deleted: a refund being deleted restores the quantity.
+        // woocommerce_new_order is deliberately NOT used: it can fire mid-construction before line items
+        // are attached, which would count an empty order and undercount.
         add_action('woocommerce_checkout_order_processed', [$this, 'sync_order_count'], 20, 1);
         add_action('woocommerce_order_status_changed', [$this, 'sync_order_count'], 20, 1);
+        add_action('woocommerce_order_refunded', [$this, 'sync_order_count'], 20, 1);
+        add_action('woocommerce_refund_deleted', [$this, 'on_refund_deleted'], 20, 2);
     }
 
     /* ---------------------------------------------------------------------
@@ -562,11 +567,10 @@ class TRM_Preorder extends TRM_Core
     }
 
     /**
-     * Bring a product's pre-order counts in line with an order's current status. Idempotent via the
-     * order-level `_trm_preorder_counted` flag, so it is safe to call from several hooks
-     * (checkout_order_processed, new_order, order_status_changed) without double-counting.
+     * Reconcile a single order's contribution to product pre-order counts.
      *
-     * Hooks: woocommerce_checkout_order_processed, woocommerce_new_order, woocommerce_order_status_changed
+     * Hooks: woocommerce_checkout_order_processed, woocommerce_order_status_changed,
+     *        woocommerce_order_refunded
      *
      * @param int $order_id
      * @return void
@@ -574,67 +578,85 @@ class TRM_Preorder extends TRM_Core
     public function sync_order_count($order_id)
     {
         $order = wc_get_order($order_id);
-        if (!$order instanceof WC_Order) {
-            return;
-        }
-
-        $should_count = $this->status_counts($order->get_status());
-        $is_counted   = $order->get_meta(self::META_ORDER_COUNTED) === 'yes';
-
-        if ($should_count && !$is_counted) {
-            $this->apply_order_counts($order, 1);
-            $order->update_meta_data(self::META_ORDER_COUNTED, 'yes');
-            $order->save();
-        } elseif (!$should_count && $is_counted) {
-            $this->apply_order_counts($order, -1);
-            $order->update_meta_data(self::META_ORDER_COUNTED, 'no');
-            $order->save();
+        if ($order instanceof WC_Order) {
+            $this->reconcile_order($order);
         }
     }
 
     /**
-     * Add (+1) or remove (−1) an order's pre-order quantities from the per-product counts.
+     * woocommerce_refund_deleted passes ($refund_id, $order_id) — reconcile the parent order so the
+     * quantity restored by the deletion is added back to the count.
      *
-     * On increment we record the counted quantity and product id on each line item, then on decrement
-     * we replay exactly what was recorded. This keeps the reversal correct even if the product has
-     * left the Coming Soon category in the meantime (at which point the count is irrelevant anyway,
-     * but we keep it tidy).
+     * Hook: woocommerce_refund_deleted
      *
-     * @param WC_Order $order
-     * @param int $sign 1 to add, -1 to remove.
+     * @param int $refund_id
+     * @param int $order_id
      * @return void
      */
-    private function apply_order_counts($order, $sign)
+    public function on_refund_deleted($refund_id, $order_id)
     {
+        $this->sync_order_count($order_id);
+    }
+
+    /**
+     * Recompute every pre-order line item's contribution to its product's count and apply only the
+     * difference from what is currently recorded as applied. This single routine handles placement,
+     * cancellation / refund / failure (and restoring from them), and partial refunds — and is
+     * idempotent, so the overlapping hooks above can't double-count.
+     *
+     * The target contribution for a line is:
+     *   - 0 when the order is in a non-counting status (cancelled / refunded / failed / trash);
+     *   - otherwise (ordered quantity − refunded quantity), clamped at zero. A partial refund leaves
+     *     the status counting but raises the refunded quantity, so the contribution drops accordingly.
+     *
+     * Which lines are tracked is remembered on the item itself (ITEM_META_PRODUCT_ID), set the first
+     * time a line is seen as a pre-order line. After that we never re-check the category, so the
+     * reversal stays correct even once the product has left the Coming Soon category on release.
+     *
+     * @param WC_Order $order
+     * @return void
+     */
+    private function reconcile_order($order)
+    {
+        $counts = $this->status_counts($order->get_status());
+
         foreach ($order->get_items() as $item) {
             if (!$item instanceof WC_Order_Item_Product) {
                 continue;
             }
 
-            if ($sign > 0) {
+            $pid           = (int) $item->get_meta(self::ITEM_META_PRODUCT_ID);
+            $newly_tracked = false;
+
+            // Untracked line: only start tracking it if it is currently a pre-order product.
+            if (!$pid) {
                 $product = $item->get_product();
                 if (!self::is_preorder_product($product)) {
                     continue;
                 }
-
                 $pid = self::category_post_id($product);
-                $qty = (int) $item->get_quantity();
-                if ($qty <= 0) {
-                    continue;
-                }
-
-                $this->adjust_product_count($pid, $qty);
-
-                $item->update_meta_data(self::ITEM_META_COUNTED_QTY, $qty);
                 $item->update_meta_data(self::ITEM_META_PRODUCT_ID, $pid);
-                $item->save();
-            } else {
-                $qty = (int) $item->get_meta(self::ITEM_META_COUNTED_QTY);
-                $pid = (int) $item->get_meta(self::ITEM_META_PRODUCT_ID);
+                $newly_tracked = true;
+            }
 
-                if ($qty > 0 && $pid > 0) {
-                    $this->adjust_product_count($pid, -$qty);
-                }
+            if ($counts) {
+                $ordered  = (int) $item->get_quantity();
+                $refunded = abs((int) $order->get_qty_refunded_for_item($item->get_id()));
+                $target   = max(0, $ordered - $refunded);
+            } else {
+                $target = 0;
+            }
+
+            $applied = (int) $item->get_meta(self::ITEM_META_APPLIED_QTY);
+            $delta   = $target - $applied;
+
+            if ($delta !== 0) {
+                $this->adjust_product_count($pid, $delta);
+                $item->update_meta_data(self::ITEM_META_APPLIED_QTY, $target);
+                $item->save();
+            } elseif ($newly_tracked) {
+                // Persist the product-id we just attached even when there's no count change.
+                $item->save();
             }
         }
     }
