@@ -1,0 +1,28 @@
+@use "variables";
+
+// Payment-required notice shown beneath the order total at checkout when the cart holds pre-order
+// (Coming Soon) products.
+.trm-preorder-notice {
+    border: 2px solid variables.$base-black-color;
+    border-radius: 10px;
+    background-color: #fff8e5;
+    padding: 12px 16px;
+    margin: 15px 0 5px;
+    font-size: 14px;
+    line-height: 1.5;
+
+    p {
+        margin: 0 0 6px;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}
+
+// The notice is injected as a row in the totals table's <tfoot>; strip the inherited cell
+// padding/borders so the notice box controls its own spacing.
+.trm-preorder-row td {
+    padding: 0;
+    border: 0;
+}

@@ -10,6 +10,7 @@ require_once('classes/ajax-hooks.php');
 require_once('classes/cost-price/trm-cost-price.php');
 require_once('classes/profit-analytics/trm-profit-analytics.php');
 require_once('classes/coming-soon/trm-coming-soon.php');
+require_once('classes/preorder/trm-preorder.php');
 
 new TRM_Marketing_Handler();
 new TRM_WC_Hooks();
@@ -20,6 +21,7 @@ new TRM_AJAX_Hooks();
 new TRM_Cost_Price();
 new TRM_Profit_Analytics();
 new TRM_Coming_Soon();
+new TRM_Preorder();
 new TRM_Core();
 
 function trm_load_parent_stylesheets()

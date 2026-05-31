@@ -1117,4 +1117,25 @@ body.woocommerce-cart .cart-collaterals .cart_totals .checkout-button {
   border: 0;
 }
 
+.trm-preorder-notice {
+  border: 2px solid #000;
+  border-radius: 10px;
+  background-color: #fff8e5;
+  padding: 12px 16px;
+  margin: 15px 0 5px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.trm-preorder-notice p {
+  margin: 0 0 6px;
+}
+.trm-preorder-notice p:last-child {
+  margin-bottom: 0;
+}
+
+.trm-preorder-row td {
+  padding: 0;
+  border: 0;
+}
+
 /*# sourceMappingURL=layout.css.map */
