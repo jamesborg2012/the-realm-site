@@ -470,11 +470,214 @@ body a {
     transform: translateY(-50%) rotate(360deg);
   }
 }
-#site-navigation .mega-menu-wrap #mega-menu-primary {
+/* Two-bar site header.
+ *
+ *   Top bar    (#masthead > .col-full)              white  — logo (left) + contact info (right)
+ *   Lower bar  (.storefront-primary-navigation)     black  — mega menu + search + account + cart
+ *
+ * Layout is produced by re-homing Storefront header components by priority in TRM_Header_Hooks;
+ * this file only handles the visual arrangement. ID selectors (#masthead) are used so we win over
+ * Storefront's customizer-generated `.site-header { background-color }` rule without !important. */
+#masthead.site-header {
   background: #fff;
+  padding: 0;
+  border-bottom: 0;
+  /* -- Top bar: logo + contact ------------------------------------------- */
+  /* -- Lower bar: menu + search + account + cart -------------------------- */
+}
+#masthead.site-header > .col-full {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  /* Storefront's skip links / (empty) social icons shouldn't take layout space here. */
+}
+#masthead.site-header > .col-full .site-branding {
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+}
+#masthead.site-header > .col-full .site-branding .custom-logo,
+#masthead.site-header > .col-full .site-branding img {
+  max-height: 64px;
+  width: auto;
+  margin: 0;
+}
+#masthead.site-header > .col-full .site-branding .site-title,
+#masthead.site-header > .col-full .site-branding .site-description {
+  margin: 0;
+}
+#masthead.site-header > .col-full .skip-link {
+  position: absolute;
+}
+#masthead.site-header > .col-full .trm-header-contact {
+  margin-left: auto;
+}
+#masthead.site-header .storefront-primary-navigation {
+  background: #000;
+  margin: 0;
+  border: 0;
+  /* Items sitting directly on the black strip render white. The search pill keeps its own
+   * dark-on-white treatment (re-asserted on .site-search below). */
+  color: #fff;
+  /* Search sits between the menu and the account/cart icons, pushed right. The search pill (and
+   * its results dropdown) live on a white background, so restore dark text within it. */
+}
+#masthead.site-header .storefront-primary-navigation a {
+  color: #fff;
+}
+#masthead.site-header .storefront-primary-navigation a:hover {
+  color: #c8102e;
+}
+#masthead.site-header .storefront-primary-navigation > .col-full {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+#masthead.site-header .storefront-primary-navigation #site-navigation {
+  margin: 0;
+  flex: 0 1 auto;
+  background: transparent;
+}
+#masthead.site-header .storefront-primary-navigation .site-search {
+  flex: 1 1 320px;
+  max-width: 440px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  color: #222;
+}
+#masthead.site-header .storefront-primary-navigation .site-search a {
+  color: inherit;
+}
+#masthead.site-header .storefront-primary-navigation .site-search a:hover {
+  color: inherit;
+}
+#masthead.site-header .storefront-primary-navigation .trm-header-account {
+  flex: 0 0 auto;
+}
+#masthead.site-header .storefront-primary-navigation #site-header-cart {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  /* Keep the in-bar summary link tight to its content. The dropdown widget
+   * (.widget_shopping_cart, in the sibling <li>) is deliberately left untouched so it keeps
+   * its default width. */
+}
+#masthead.site-header .storefront-primary-navigation #site-header-cart > li {
+  width: auto;
+}
+#masthead.site-header .storefront-primary-navigation #site-header-cart .cart-contents {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  min-width: 0;
+  color: #fff;
+  /* Count text matches the rest of the bar — no pill background, just white text. */
+}
+#masthead.site-header .storefront-primary-navigation #site-header-cart .cart-contents:hover {
+  color: #c8102e;
+}
+#masthead.site-header .storefront-primary-navigation #site-header-cart .cart-contents .count {
+  background: none;
+  color: inherit;
+  padding: 0;
+  border: 0;
+}
+
+/* -- Contact info block (top bar) ---------------------------------------- */
+.trm-header-contact {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+.trm-header-contact__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #000 !important;
+  text-decoration: none !important;
+}
+.trm-header-contact__item:hover {
+  color: #c8102e !important;
+}
+.trm-header-contact__icon {
+  color: #000;
+  display: inline-flex;
+  align-items: center;
+}
+.trm-header-contact__icon svg {
+  display: block;
+}
+.trm-header-contact__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.trm-header-contact__label {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.trm-header-contact__value {
+  font-size: 15px;
+}
+
+/* -- Account link (lower bar) -------------------------------------------- */
+.trm-header-account__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.trm-header-account__link:hover, .trm-header-account__link:focus {
+  color: #fff;
+  background: #c8102e;
+}
+.trm-header-account__link svg {
+  display: block;
+}
+
+/* -- Responsive ---------------------------------------------------------- */
+@media screen and (max-width: 768px) {
+  #masthead.site-header > .col-full {
+    justify-content: center;
+  }
+  #masthead.site-header > .col-full .trm-header-contact {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  #masthead.site-header .storefront-primary-navigation > .col-full {
+    flex-wrap: wrap;
+  }
+  #masthead.site-header .storefront-primary-navigation > .col-full .site-search {
+    order: 3;
+    flex: 1 1 100%;
+    max-width: none;
+    margin: 8px 0 0;
+  }
+  .trm-header-contact__label {
+    font-size: 12px;
+  }
+}
+#site-navigation .mega-menu-wrap #mega-menu-primary {
+  background: transparent;
 }
 #site-navigation .mega-menu-wrap #mega-menu-primary > li.mega-menu-item .mega-menu-link {
-  color: #000;
+  color: #fff;
 }
 #site-navigation .mega-menu-wrap #mega-menu-primary > li.mega-menu-megamenu > .mega-sub-menu {
   border: 1px solid #000;

@@ -2,12 +2,14 @@
 
 #site-navigation {
     .mega-menu-wrap {
+        // The primary nav bar now sits on the black header strip — let that show through and render
+        // the top-level links white. Sub-menus keep their own white background (set below).
         #mega-menu-primary {
-            background: #fff;
+            background: transparent;
             & > li {
                 &.mega-menu-item {
                     .mega-menu-link {
-                        color: variables.$base-black-color;
+                        color: #fff;
                         &:hover {
                             // background: #fff;
                         }

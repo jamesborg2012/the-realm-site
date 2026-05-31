@@ -4,7 +4,10 @@
       "Bash(grep -v \"^\\\\.$\")",
       "Bash(ls -la /d/xampp/htdocs/the-realm/wp-content/plugins/realm-*/)",
       "Bash(npm run *)",
-      "PowerShell(npm run compile:sass 2>&1)"
+      "PowerShell(npm run compile:sass 2>&1)",
+      "Bash(php -l classes/header-hooks.php)",
+      "Bash(php -l classes/wc-hooks.php)",
+      "Bash(php -l functions.php)"
     ]
   }
 }

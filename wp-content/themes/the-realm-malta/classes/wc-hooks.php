@@ -94,6 +94,56 @@ class TRM_WC_Hooks extends TRM_Core
         // that ignores fields added through `woocommerce_settings_api_form_fields_cod`.
         add_filter('woocommerce_general_settings', [$this, 'add_revolut_general_setting']);
         add_filter('woocommerce_gateway_description', [$this, 'append_revolut_to_cod_description'], 10, 2);
+
+        // Store contact details (phone + email) shown in the site header's top bar. Stored as
+        // standalone options `trm_contact_phone` / `trm_contact_email` under WC → Settings → General;
+        // rendered by TRM_Header_Hooks::render_header_contact_info().
+        add_filter('woocommerce_general_settings', [$this, 'add_contact_info_general_setting']);
+    }
+
+    /**
+     * Add a "The Realm — Contact Info" section to WC → Settings → General with the store's public
+     * phone number and email address. Stored in standalone options `trm_contact_phone` and
+     * `trm_contact_email`; both are surfaced in the header's top bar as tel:/mailto: links by
+     * TRM_Header_Hooks. Kept separate from the Payment Info section so the two concerns stay distinct.
+     *
+     * Hook: woocommerce_general_settings
+     *
+     * @param array $settings
+     * @return array
+     */
+    public function add_contact_info_general_setting($settings)
+    {
+        $section = [
+            [
+                'title' => __('The Realm — Contact Info', 'the-realm-malta'),
+                'type'  => 'title',
+                'desc'  => __('Shown in the top bar of the site header. Leave a field empty to hide it.', 'the-realm-malta'),
+                'id'    => 'trm_contact_info_options',
+            ],
+            [
+                'title'    => __('Contact Phone', 'the-realm-malta'),
+                'desc'     => __('Public telephone number (e.g. +356 21434844). Rendered as a clickable call link in the header.', 'the-realm-malta'),
+                'id'       => 'trm_contact_phone',
+                'type'     => 'text',
+                'default'  => '',
+                'desc_tip' => false,
+            ],
+            [
+                'title'    => __('Contact Email', 'the-realm-malta'),
+                'desc'     => __('Public email address. Rendered as a clickable mailto link in the header.', 'the-realm-malta'),
+                'id'       => 'trm_contact_email',
+                'type'     => 'email',
+                'default'  => '',
+                'desc_tip' => false,
+            ],
+            [
+                'type' => 'sectionend',
+                'id'   => 'trm_contact_info_options',
+            ],
+        ];
+
+        return array_merge($settings, $section);
     }
 
     /**

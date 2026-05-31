@@ -1,0 +1,249 @@
+@use "variables";
+
+/* Two-bar site header.
+ *
+ *   Top bar    (#masthead > .col-full)              white  — logo (left) + contact info (right)
+ *   Lower bar  (.storefront-primary-navigation)     black  — mega menu + search + account + cart
+ *
+ * Layout is produced by re-homing Storefront header components by priority in TRM_Header_Hooks;
+ * this file only handles the visual arrangement. ID selectors (#masthead) are used so we win over
+ * Storefront's customizer-generated `.site-header { background-color }` rule without !important. */
+
+$trm-header-white: #fff;
+$trm-header-black: #000;
+$trm-header-accent: #c8102e; // Realm red — used for the contact icons + hover.
+
+#masthead.site-header {
+  background: $trm-header-white;
+  padding: 0;
+  border-bottom: 0;
+
+  /* -- Top bar: logo + contact ------------------------------------------- */
+  > .col-full {
+    background: $trm-header-white;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+
+    .site-branding {
+      margin: 0;
+      padding: 0;
+      flex: 0 0 auto;
+
+      .custom-logo,
+      img {
+        max-height: 64px;
+        width: auto;
+        margin: 0;
+      }
+
+      .site-title,
+      .site-description {
+        margin: 0;
+      }
+    }
+
+    /* Storefront's skip links / (empty) social icons shouldn't take layout space here. */
+    .skip-link {
+      position: absolute;
+    }
+
+    .trm-header-contact {
+      margin-left: auto;
+    }
+  }
+
+  /* -- Lower bar: menu + search + account + cart -------------------------- */
+  .storefront-primary-navigation {
+    background: $trm-header-black;
+    margin: 0;
+    border: 0;
+
+    /* Items sitting directly on the black strip render white. The search pill keeps its own
+     * dark-on-white treatment (re-asserted on .site-search below). */
+    color: $trm-header-white;
+
+    a {
+      color: $trm-header-white;
+
+      &:hover {
+        color: $trm-header-accent;
+      }
+    }
+
+    > .col-full {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+
+    #site-navigation {
+      margin: 0;
+      flex: 0 1 auto;
+      background: transparent;
+    }
+
+    /* Search sits between the menu and the account/cart icons, pushed right. The search pill (and
+     * its results dropdown) live on a white background, so restore dark text within it. */
+    .site-search {
+      flex: 1 1 320px;
+      max-width: 440px;
+      margin: 0 0 0 auto;
+      padding: 0;
+      color: #222;
+
+      a {
+        color: inherit;
+
+        &:hover {
+          color: inherit;
+        }
+      }
+    }
+
+    .trm-header-account {
+      flex: 0 0 auto;
+    }
+
+    #site-header-cart {
+      flex: 0 0 auto;
+      width: auto;
+      margin: 0;
+
+      /* Keep the in-bar summary link tight to its content. The dropdown widget
+       * (.widget_shopping_cart, in the sibling <li>) is deliberately left untouched so it keeps
+       * its default width. */
+      > li {
+        width: auto;
+      }
+
+      .cart-contents {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        width: auto;
+        min-width: 0;
+        color: $trm-header-white;
+
+        &:hover {
+          color: $trm-header-accent;
+        }
+
+        /* Count text matches the rest of the bar — no pill background, just white text. */
+        .count {
+          background: none;
+          color: inherit;
+          padding: 0;
+          border: 0;
+        }
+      }
+    }
+  }
+}
+
+/* -- Contact info block (top bar) ---------------------------------------- */
+.trm-header-contact {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #000 !important;
+    text-decoration: none !important;
+
+    &:hover {
+      color: $trm-header-accent !important;
+    }
+  }
+
+  &__icon {
+    color: #000;
+    display: inline-flex;
+    align-items: center;
+
+    svg {
+      display: block;
+    }
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+  }
+
+  &__label {
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+
+  &__value {
+    font-size: 15px;
+  }
+}
+
+/* -- Account link (lower bar) -------------------------------------------- */
+.trm-header-account {
+  &__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: $trm-header-white;
+    background: rgba(255, 255, 255, 0.08);
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:hover,
+    &:focus {
+      color: $trm-header-white;
+      background: $trm-header-accent;
+    }
+
+    svg {
+      display: block;
+    }
+  }
+}
+
+/* -- Responsive ---------------------------------------------------------- */
+@media screen and (max-width: 768px) {
+  #masthead.site-header {
+    > .col-full {
+      justify-content: center;
+
+      .trm-header-contact {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+    }
+
+    .storefront-primary-navigation > .col-full {
+      flex-wrap: wrap;
+
+      .site-search {
+        order: 3;
+        flex: 1 1 100%;
+        max-width: none;
+        margin: 8px 0 0;
+      }
+    }
+  }
+
+  .trm-header-contact__label {
+    font-size: 12px;
+  }
+}

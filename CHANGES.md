@@ -15,7 +15,6 @@ See [CLAUDE.md](CLAUDE.md) for the architecture map.
 
 ## Backlog
 
-- [ ] **5. Client mobile number and email address in header**
 - [ ] **6. Pre-Order handling**
 - [ ] **7. Difference between On Order & In Stock in single product pages**
 - [ ] **8. Completed vs Processing handling**
@@ -24,7 +23,12 @@ See [CLAUDE.md](CLAUDE.md) for the architecture map.
 
 ## In Progress
 
-_(none)_
+- [ ] **5. Client mobile number and email address in header** — brief: (1) add admin option fields for the store's contact phone + email; (2) restructure the header into two bars matching the supplied screenshot — white top bar with logo (left) + contact info (right), black lower bar with mega menu + search + account + cart; (3) surface the contact fields in the new top-bar position.
+  - **Settings:** new "The Realm — Contact Info" section under WC → Settings → General (`TRM_WC_Hooks::add_contact_info_general_setting`, on `woocommerce_general_settings`). Two standalone options: `trm_contact_phone` (text) and `trm_contact_email` (email).
+  - **Layout:** new `TRM_Header_Hooks` class re-homes Storefront `storefront_header` callbacks by priority. The search moves out of the top `.col-full` row (was priority 40) into the `.storefront-primary-navigation` bar (now 55); contact info renders in the search's old top-bar slot (40); a My Account link renders in the lower bar before the cart (58, cart is 60). Re-hooking is deferred to `after_setup_theme` (priority 11) because the parent registers `storefront_product_search` at file-load, which runs after the child's `functions.php` — removing it any earlier is a no-op and duplicates the search.
+  - **Contact render:** phone → `tel:` link (digits + leading `+` only), email → `mailto:` link, each with a small label + inline SVG icon; each item omitted when its option is empty, whole block skipped when both empty. Values escaped.
+  - **Styling:** new `assets/scss/header.scss` (added to `styles.scss`) — `#masthead` top `.col-full` white with logo left / contact right; `.storefront-primary-navigation` black with menu + right-aligned search + account + cart (cart text/icon flipped white). `mega-menu.scss` top-level bar set transparent + links white so the black bar shows through; sub-menus stay white. Responsive: contact + search wrap full-width under 768px.
+  - **Not yet verified in-browser** — local XAMPP MySQL/Apache were down this session, so the two-bar layout and mega-menu integration still need a visual check once the stack is up.
 
 ## Done
 
