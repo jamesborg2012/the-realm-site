@@ -747,6 +747,30 @@ class TRM_WC_Hooks extends TRM_Core
 
         add_filter('posts_search', $sku_filter, 10, 2);
 
+        $tax_query = [
+            [
+                'taxonomy' => 'product_visibility',
+                'field' => 'name',
+                'terms' => ['exclude-from-search', 'exclude-from-catalog'],
+                'operator' => 'NOT IN',
+            ],
+        ];
+
+        // Keep Coming Soon products out of search results, matching the catalog rule in
+        // TRM_Coming_Soon::exclude_coming_soon_from_catalog (which skips AJAX queries like this one).
+        if (class_exists('TRM_Coming_Soon')) {
+            $coming_soon_cat = TRM_Coming_Soon::get_category_id();
+            if ($coming_soon_cat) {
+                $tax_query[] = [
+                    'taxonomy' => 'product_cat',
+                    'field' => 'term_id',
+                    'terms' => [$coming_soon_cat],
+                    'operator' => 'NOT IN',
+                    'include_children' => true,
+                ];
+            }
+        }
+
         $query = new WP_Query([
             'post_type' => 'product',
             'post_status' => 'publish',
@@ -759,14 +783,7 @@ class TRM_WC_Hooks extends TRM_Core
                 ['key' => '_price', 'compare' => 'EXISTS'],
                 ['key' => '_price', 'value' => '', 'compare' => '!='],
             ],
-            'tax_query' => [
-                [
-                    'taxonomy' => 'product_visibility',
-                    'field' => 'name',
-                    'terms' => ['exclude-from-search', 'exclude-from-catalog'],
-                    'operator' => 'NOT IN',
-                ],
-            ],
+            'tax_query' => $tax_query,
             'orderby' => 'title',
             'order' => 'ASC',
         ]);
