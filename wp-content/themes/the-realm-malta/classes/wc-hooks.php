@@ -56,6 +56,17 @@ class TRM_WC_Hooks extends TRM_Core
         add_filter('woocommerce_get_availability_text', [$this, 'set_custom_backorder_availability_text'], 99, 2);
         add_filter('woocommerce_get_availability_class', [$this, 'set_custom_backorder_availability_class'], 99, 2);
 
+        // On Order (backorder) products: relabel the add-to-cart button (single product page +
+        // shop/archive loop) and show a delivery disclaimer; same disclaimer surfaces at the top of
+        // the cart and under the order total at checkout when an On Order item is present.
+        add_filter('woocommerce_product_single_add_to_cart_text', [$this, 'set_on_order_add_to_cart_text'], 99, 2);
+        add_filter('woocommerce_product_add_to_cart_text', [$this, 'set_on_order_add_to_cart_text'], 99, 2);
+        add_action('woocommerce_after_add_to_cart_form', [$this, 'render_on_order_single_notice']);
+        add_action('woocommerce_before_cart', [$this, 'render_on_order_cart_notice']);
+        add_action('woocommerce_review_order_after_order_total', [$this, 'render_on_order_checkout_notice']);
+        // Editable disclaimer text lives under WC → Settings → General.
+        add_filter('woocommerce_general_settings', [$this, 'add_on_order_general_setting']);
+
         add_filter('product_cat_class', [$this, 'set_custom_product_cat_class'], 99, 3);
 
         // Exclude products without a price from frontend queries (e.g., product archives and Query Loop)
@@ -456,6 +467,187 @@ class TRM_WC_Hooks extends TRM_Core
         }
 
         return $class;
+    }
+
+    /**
+     * An "On Order" product is one whose stock is being managed, is currently at/below zero, and has
+     * backorders enabled — i.e. WC's backorder state. This mirrors the detection used by
+     * set_custom_backorder_availability_text/class so the button label, single-product disclaimer,
+     * and cart/checkout notice all agree on what "On Order" means.
+     *
+     * @param WC_Product|mixed $product
+     * @return bool
+     */
+    private function is_product_on_order($product)
+    {
+        return $product instanceof WC_Product
+            && $product->managing_stock()
+            && $product->is_on_backorder();
+    }
+
+    /**
+     * The disclaimer shown for On Order products. Editable under WC → Settings → General
+     * (option `trm_on_order_message`); falls back to a generic line when left empty.
+     *
+     * @return string
+     */
+    private function get_on_order_message()
+    {
+        $message = get_option('trm_on_order_message', '');
+        $message = is_string($message) ? trim($message) : '';
+
+        if ($message === '') {
+            $message = __('On Order item delivery is subject to availability', 'the-realm-malta');
+        }
+
+        return $message;
+    }
+
+    /**
+     * Relabel the add-to-cart button to "Order Now" for On Order products. Used for both the single
+     * product page (woocommerce_product_single_add_to_cart_text) and the shop/archive loop button
+     * (woocommerce_product_add_to_cart_text). In-stock products keep their default label.
+     *
+     * Hooks: woocommerce_product_single_add_to_cart_text, woocommerce_product_add_to_cart_text (priority 99)
+     *
+     * @param string $text
+     * @param WC_Product $product
+     * @return string
+     */
+    public function set_on_order_add_to_cart_text($text, $product)
+    {
+        if ($this->is_product_on_order($product)) {
+            $text = __('Order Now', 'the-realm-malta');
+        }
+
+        return $text;
+    }
+
+    /**
+     * Render the On Order delivery disclaimer directly beneath the add-to-cart form on a single
+     * product page, but only when the product is On Order.
+     *
+     * Hook: woocommerce_after_add_to_cart_form
+     *
+     * @return void
+     */
+    public function render_on_order_single_notice()
+    {
+        global $product;
+
+        if (!$this->is_product_on_order($product)) {
+            return;
+        }
+
+        echo '<div class="trm-on-order-notice trm-on-order-notice--single">';
+        echo wpautop(wp_kses_post($this->get_on_order_message()));
+        echo '</div>';
+    }
+
+    /**
+     * Build the inner HTML for the cart/checkout On Order disclaimer: the disclaimer message plus a
+     * line naming the On Order items currently in the cart. Returns '' when the cart holds no On
+     * Order items (or the cart isn't available), so callers can skip rendering entirely.
+     *
+     * @return string
+     */
+    private function build_on_order_cart_notice($modifier_class)
+    {
+        if (!function_exists('WC') || !WC()->cart) {
+            return '';
+        }
+
+        $names = [];
+
+        foreach (WC()->cart->get_cart() as $cart_item) {
+            $cart_product = isset($cart_item['data']) ? $cart_item['data'] : null;
+
+            if ($this->is_product_on_order($cart_product)) {
+                $names[] = $cart_product->get_name();
+            }
+        }
+
+        if (empty($names)) {
+            return '';
+        }
+
+        $names = array_unique($names);
+
+        return '<div class="trm-on-order-notice ' . esc_attr($modifier_class) . '">'
+            . wpautop(wp_kses_post($this->get_on_order_message()))
+            . '<p class="trm-on-order-notice__items">'
+            . esc_html__('On Order items in your cart:', 'the-realm-malta') . ' '
+            . esc_html(implode(', ', $names))
+            . '</p>'
+            . '</div>';
+    }
+
+    /**
+     * Render the On Order disclaimer at the top of the cart when one or more cart items are On Order.
+     *
+     * Hook: woocommerce_before_cart
+     *
+     * @return void
+     */
+    public function render_on_order_cart_notice()
+    {
+        echo $this->build_on_order_cart_notice('trm-on-order-notice--cart'); // already escaped in builder
+    }
+
+    /**
+     * Render the same On Order disclaimer directly beneath the order total in the checkout review
+     * table. Output as a table row (the hook fires inside the totals table's <tfoot>).
+     *
+     * Hook: woocommerce_review_order_after_order_total
+     *
+     * @return void
+     */
+    public function render_on_order_checkout_notice()
+    {
+        $notice = $this->build_on_order_cart_notice('trm-on-order-notice--checkout');
+
+        if ($notice === '') {
+            return;
+        }
+
+        echo '<tr class="trm-on-order-row"><td colspan="2">' . $notice . '</td></tr>'; // already escaped in builder
+    }
+
+    /**
+     * Add a "The Realm — On Order" section to WC → Settings → General with the editable disclaimer
+     * shown for On Order products (single product page + cart + checkout). Stored in the standalone
+     * option `trm_on_order_message`; when empty, a generic fallback message is used instead.
+     *
+     * Hook: woocommerce_general_settings
+     *
+     * @param array $settings
+     * @return array
+     */
+    public function add_on_order_general_setting($settings)
+    {
+        $section = [
+            [
+                'title' => __('The Realm — On Order', 'the-realm-malta'),
+                'type'  => 'title',
+                'desc'  => __('Disclaimer shown for On Order (backorder) products on the single product page, and at the top of the cart and checkout when an On Order item is present.', 'the-realm-malta'),
+                'id'    => 'trm_on_order_options',
+            ],
+            [
+                'title'    => __('On Order Disclaimer', 'the-realm-malta'),
+                'desc'     => __('Leave empty to use the default: "On Order item delivery is subject to availability".', 'the-realm-malta'),
+                'id'       => 'trm_on_order_message',
+                'type'     => 'textarea',
+                'css'      => 'min-width:400px; min-height:80px;',
+                'default'  => '',
+                'desc_tip' => false,
+            ],
+            [
+                'type' => 'sectionend',
+                'id'   => 'trm_on_order_options',
+            ],
+        ];
+
+        return array_merge($settings, $section);
     }
 
     public function set_custom_product_cat_class($classes, $class, $category)

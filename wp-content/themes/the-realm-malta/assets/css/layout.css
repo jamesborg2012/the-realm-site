@@ -1085,5 +1085,36 @@ body.woocommerce-cart .cart-collaterals .cart_totals .checkout-button {
     transform: rotate(360deg);
   }
 }
+.trm-on-order-notice {
+  border: 2px solid #000;
+  border-radius: 10px;
+  background-color: #fff8e5;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.trm-on-order-notice p {
+  margin: 0 0 6px;
+}
+.trm-on-order-notice p:last-child {
+  margin-bottom: 0;
+}
+.trm-on-order-notice__items {
+  font-weight: 600;
+}
+.trm-on-order-notice--single {
+  margin-top: 20px;
+}
+.trm-on-order-notice--cart {
+  margin: 0 0 25px;
+}
+.trm-on-order-notice--checkout {
+  margin: 15px 0 5px;
+}
+
+.trm-on-order-row td {
+  padding: 0;
+  border: 0;
+}
 
 /*# sourceMappingURL=layout.css.map */
