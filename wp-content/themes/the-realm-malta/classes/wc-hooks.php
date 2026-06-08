@@ -28,6 +28,15 @@ class TRM_WC_Hooks extends TRM_Core
         'zero-rate' => [],
     ];
 
+    /**
+     * Per-request map of order_id => bool, captured before WC saves an admin order, recording whether
+     * the order was still an `auto-draft` (i.e. this save is its initial creation). Used by the
+     * admin order-create total recalculation. See recalculate_new_admin_order_totals().
+     *
+     * @var array<int,bool>
+     */
+    private $order_was_new_on_save = [];
+
     public function __construct()
     {
         $this->remove_wc_hooks();
@@ -99,6 +108,15 @@ class TRM_WC_Hooks extends TRM_Core
         // saved with no VAT (total = ex-VAT subtotal). Fall back to the store base location whenever
         // the customer's taxable country is empty so Maltese VAT always applies.
         add_filter('woocommerce_customer_taxable_address', [$this, 'default_taxable_address_to_base'], 99);
+
+        // Admin-created orders: staff add line items via Orders → Add Order but often save without
+        // pressing "Recalculate", so per-line taxes are never computed from the rates and the order is
+        // stored with no VAT. Recompute taxes + totals ONLY on the initial create (auto-draft → real
+        // status), not on every save — so existing orders aren't reprocessed on each edit. Two hooks:
+        // capture the pre-save status early (before WC updates it at prio 40), then recalc at prio 60
+        // (after WC saves the line items at prio 45) if this save was the order's creation.
+        add_action('woocommerce_process_shop_order_meta', [$this, 'capture_admin_order_pre_save_status'], 5, 1);
+        add_action('woocommerce_process_shop_order_meta', [$this, 'recalculate_new_admin_order_totals'], 60, 1);
 
         // Header live-search dropdown (populates the panel rendered by woocommerce/product-searchform.php).
         add_action('wp_ajax_trm_live_search', [$this, 'handle_live_search']);
@@ -289,6 +307,68 @@ class TRM_WC_Hooks extends TRM_Core
         }
 
         return $address;
+    }
+
+    /**
+     * Record, before WC processes an admin order save, whether the order is still an `auto-draft`.
+     *
+     * A brand-new order from Orders → Add Order exists in the DB as an `auto-draft` until the admin
+     * clicks "Create"; that submit is the only time this save represents the order's creation. We
+     * read the status here at priority 5 — before WC_Meta_Box_Order_Data::save (prio 40) replaces it
+     * with the chosen status — and stash the result for recalculate_new_admin_order_totals() at
+     * prio 60. Status-agnostic across HPOS and the legacy posts table (no reliance on form fields).
+     *
+     * Hook: woocommerce_process_shop_order_meta (priority 5)
+     *
+     * @param int $order_id
+     * @return void
+     */
+    public function capture_admin_order_pre_save_status($order_id)
+    {
+        $order = wc_get_order($order_id);
+
+        $this->order_was_new_on_save[$order_id] = ($order && $order->get_status() === 'auto-draft');
+    }
+
+    /**
+     * Recalculate taxes + totals once, when an order is first created in the admin.
+     *
+     * When staff create an order in wp-admin and add line items, WC saves the line totals from the
+     * posted fields but does NOT recompute per-line taxes from the rates unless "Recalculate" was
+     * pressed (that button fires the calc-line-taxes AJAX). If forgotten, the order is stored with no
+     * VAT (total = ex-VAT subtotal). This runs that same calculation automatically — but ONLY on the
+     * initial create (guarded by the auto-draft flag captured at prio 5), so it's a one-off per order
+     * and never re-runs on later edits (which keeps saves light, per the earlier every-save concern).
+     *
+     * Runs at prio 60, after WC saves the order items (WC_Meta_Box_Order_Items::save at prio 45) so
+     * the line items are present. calculate_totals(true) recomputes taxes from the rates (via
+     * WC_Order::get_tax_location(), which falls back to the store base country for address-less
+     * orders) and then the totals. Admin-only hook; HPOS-safe via wc_get_order().
+     *
+     * Note: later edits that add items still need the "Recalculate" button, by design.
+     *
+     * Hook: woocommerce_process_shop_order_meta (priority 60)
+     *
+     * @param int $order_id
+     * @return void
+     */
+    public function recalculate_new_admin_order_totals($order_id)
+    {
+        $was_new = !empty($this->order_was_new_on_save[$order_id]);
+        unset($this->order_was_new_on_save[$order_id]);
+
+        if (!$was_new) {
+            return;
+        }
+
+        $order = wc_get_order($order_id);
+
+        if (!$order) {
+            return;
+        }
+
+        $order->calculate_totals(true);
+        $order->save();
     }
 
     /**
