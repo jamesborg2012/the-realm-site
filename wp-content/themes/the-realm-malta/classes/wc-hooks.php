@@ -100,6 +100,12 @@ class TRM_WC_Hooks extends TRM_Core
         // the customer's taxable country is empty so Maltese VAT always applies.
         add_filter('woocommerce_customer_taxable_address', [$this, 'default_taxable_address_to_base'], 99);
 
+        // Admin-created orders: staff add line items via Orders → Add Order but often save without
+        // pressing "Recalculate", so per-line taxes are never computed from the rates and the order is
+        // stored with no VAT. Recompute taxes + totals on every admin order save (after WC has saved
+        // the line items at prio 45), mirroring the Recalculate button so it can't be forgotten.
+        add_action('woocommerce_process_shop_order_meta', [$this, 'recalculate_admin_order_totals'], 60, 1);
+
         // Header live-search dropdown (populates the panel rendered by woocommerce/product-searchform.php).
         add_action('wp_ajax_trm_live_search', [$this, 'handle_live_search']);
         add_action('wp_ajax_nopriv_trm_live_search', [$this, 'handle_live_search']);
@@ -289,6 +295,41 @@ class TRM_WC_Hooks extends TRM_Core
         }
 
         return $address;
+    }
+
+    /**
+     * Recalculate taxes + totals whenever an order is saved from the admin order editor.
+     *
+     * When staff create/edit an order in wp-admin and add line items, WooCommerce saves the line
+     * totals from the posted fields but does NOT recompute per-line taxes from the rates unless the
+     * "Recalculate" button was pressed first (that button fires the calc-line-taxes AJAX). If they
+     * forget, the order is stored with no VAT (total = ex-VAT subtotal). This runs the same
+     * calculation automatically on save so it can't be missed.
+     *
+     * Fires on woocommerce_process_shop_order_meta at priority 60 — after WC saves the order items
+     * (WC_Meta_Box_Order_Items::save at prio 45) so the line items are present when we recalculate.
+     * calculate_totals(true) recomputes taxes from the rates (via WC_Order::get_tax_location(), which
+     * falls back to the store base country for address-less orders) and then the totals. Admin-only
+     * hook, so the storefront checkout flow is unaffected; HPOS-safe (resolves via wc_get_order()).
+     *
+     * Note: like pressing "Recalculate", this rebuilds totals from line items on every save, so any
+     * manually overridden order total would be replaced by the computed value.
+     *
+     * Hook: woocommerce_process_shop_order_meta (priority 60)
+     *
+     * @param int $order_id
+     * @return void
+     */
+    public function recalculate_admin_order_totals($order_id)
+    {
+        $order = wc_get_order($order_id);
+
+        if (!$order || $order->get_status() === 'trash') {
+            return;
+        }
+
+        $order->calculate_totals(true);
+        $order->save();
     }
 
     /**
