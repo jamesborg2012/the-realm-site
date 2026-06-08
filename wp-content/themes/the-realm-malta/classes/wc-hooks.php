@@ -94,6 +94,12 @@ class TRM_WC_Hooks extends TRM_Core
         add_filter('woocommerce_billing_fields', [$this, 'make_billing_address_optional'], 99);
         add_filter('woocommerce_get_country_locale_default', [$this, 'make_locale_address_optional'], 99);
 
+        // Because the billing country is optional (above), a frontend order can be placed with no
+        // country, which leaves WC unable to match the Maltese VAT rate at checkout — the order is
+        // saved with no VAT (total = ex-VAT subtotal). Fall back to the store base location whenever
+        // the customer's taxable country is empty so Maltese VAT always applies.
+        add_filter('woocommerce_customer_taxable_address', [$this, 'default_taxable_address_to_base'], 99);
+
         // Header live-search dropdown (populates the panel rendered by woocommerce/product-searchform.php).
         add_action('wp_ajax_trm_live_search', [$this, 'handle_live_search']);
         add_action('wp_ajax_nopriv_trm_live_search', [$this, 'handle_live_search']);
@@ -252,6 +258,37 @@ class TRM_WC_Hooks extends TRM_Core
         }
 
         return $locale;
+    }
+
+    /**
+     * Default an empty taxable country to the store base location so VAT is always calculated.
+     *
+     * Since the billing country is optional at checkout, a guest can place an order without one.
+     * WC resolves cart/checkout tax from WC_Customer::get_taxable_address(); with no country, the
+     * country-specific Maltese VAT rate never matches and the order is stored with no VAT — the
+     * total shows the ex-VAT subtotal only. (Applying a voucher in admin masks this because
+     * WC_Order::get_tax_location() already falls back to the base country there.)
+     *
+     * This mirrors that admin fallback on the frontend: when the resolved taxable country is empty
+     * we substitute the store's base country/state/postcode/city (Malta), so 18% VAT always
+     * applies. Orders that DO carry a country (e.g. members, or any future international order) are
+     * untouched — keeping this Malta-only until other countries are handled.
+     *
+     * Hook: woocommerce_customer_taxable_address (priority 99)
+     *
+     * @param array $address [ country, state, postcode, city ]
+     * @return array
+     */
+    public function default_taxable_address_to_base($address)
+    {
+        if (empty($address[0]) && function_exists('WC') && WC()->countries) {
+            $address[0] = WC()->countries->get_base_country();
+            $address[1] = WC()->countries->get_base_state();
+            $address[2] = WC()->countries->get_base_postcode();
+            $address[3] = WC()->countries->get_base_city();
+        }
+
+        return $address;
     }
 
     /**
