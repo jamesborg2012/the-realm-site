@@ -12,7 +12,9 @@
       "Bash(/c/xampp/php/php.exe -l \"wp-content/themes/the-realm-malta/classes/coming-soon/trm-coming-soon.php\")",
       "Bash(ls /d/xampp/mysql/bin/ 2>&1 | grep -iE \"mysql|maria\" | head)",
       "Bash(/d/xampp/mysql/bin/mysql.exe -uroot the_realm -e 'SELECT post_id, CONCAT\\('\\\\''['\\\\'', meta_value, '\\\\'']'\\\\''\\) AS val, LENGTH\\(meta_value\\) AS len FROM wp_postmeta WHERE meta_key='\\\\''trm_release_date'\\\\'';')",
-      "Bash(/d/xampp/php/php.exe -l \"wp-content/themes/the-realm-malta/classes/coming-soon/trm-coming-soon.php\")"
+      "Bash(/d/xampp/php/php.exe -l \"wp-content/themes/the-realm-malta/classes/coming-soon/trm-coming-soon.php\")",
+      "Bash(php -l classes/preorder/trm-preorder.php)",
+      "Bash(D:/xampp/mysql/bin/mysql.exe -u root the_realm -e \"SELECT option_name, option_value FROM wp_options WHERE option_name IN \\('woocommerce_calc_taxes','woocommerce_prices_include_tax','woocommerce_tax_based_on','woocommerce_default_customer_address','woocommerce_default_country','woocommerce_tax_total_display'\\);\")"
     ]
   }
 }
