@@ -39,7 +39,8 @@ wp-content/
     ├── realm-events-manager/        # CUSTOM
     ├── realm-gw-excel-uploader/     # CUSTOM
     ├── realm-gw-order-tracker/      # CUSTOM
-    └── realm-members-manager/       # CUSTOM
+    ├── realm-members-manager/       # CUSTOM
+    └── realm-sales-system/          # CUSTOM — backend order-placing module (requires realm-barcode-scanner)
 ```
 
 The Gutenberg block editor is disabled (Classic Editor + Disable Gutenberg + Classic Widgets). The one place we *do* use blocks is the ACF-registered Account Creation block (rendered from `parts/blocks/block-account-creation.php`).
@@ -137,7 +138,7 @@ Membership price displayed on the CTA is `get_option("rmm_{$rounded}_months_memb
 
 ## Custom plugins
 
-All five `realm-*` plugins are first-party code authored by James Borg. Treat them as part of this codebase.
+All six `realm-*` plugins are first-party code authored by James Borg. Treat them as part of this codebase.
 
 ### `realm-members-manager` — the big one
 
@@ -196,6 +197,17 @@ Order-fulfilment dashboard for GW orders.
 - Stores **order-item meta** (not product meta): `_gw_ordered_qty`, `_gw_received_qty`, `_gw_delivered_qty`.
 - `OrderQuery` excludes orders whose customer has the `marketing` role.
 
+### `realm-sales-system`
+
+Backend order-placing module for in-store sales (alternative to WC's Add Order screen).
+
+- **Hard dependency on `realm-barcode-scanner`** — activation is blocked when it's missing, and the plugin self-deactivates (with an admin notice) if the scanner is later turned off. Barcode resolution reuses `RealmBarcodeScanner::resolve_product_fast()` / `resolve_product_slow_from_meta()`.
+- Classes: `RSS_Core` (singleton — top-level **"Sales System"** menu, cap `manage_woocommerce`, with **New Order** + **New Marketing Order** submenus + asset enqueue) and `RSS_Ajax`.
+- Admin-only AJAX (nonce `rss_sales_system`, cap `manage_woocommerce`, no nopriv): `rss_verify_member` (member number → name/surname/email/user_id + store discount %, flags expired/inactive), `rss_lookup_barcode` (scan → product, captures live `get_price()`), `rss_place_order`, `rss_place_marketing_order`.
+- Order creation: member **store discount only** (`rmm_member_store_discount`) applied to all lines via per-line `total = subtotal × (1 − pct)` (no coupon); customer attributed to the resolved user id or guest; `set_customer_note()` for the details textarea; `calculate_totals(true)` then `update_status('completed')` + `set_date_paid()` → **completed + paid**, stock reduced once. Tags order meta `_rss_sales_system_order`, `_rss_member_number`.
+- **Marketing orders** (New Marketing Order page / `rss_place_marketing_order`): a mode-flagged reuse of the same view + JS with no member section, no customer fields and no discounts. Attributed to the `realm.marketing` user (or the first `marketing`-role user, else error); charged at full price; tagged `_rss_marketing_order` + `trm_is_marketing_order = 'yes'` so it stays inline with the theme's marketing-order logic and the order-tracker's `marketing`-role exclusion.
+- No custom DB tables.
+
 ---
 
 ## Cross-cutting features
@@ -231,7 +243,7 @@ Coupon codes containing `storedisc` or `onlineonly` are treated as member discou
 ## Conventions worth knowing
 
 - All custom theme classes extend `TRM_Core` and use `render_template('admin/foo/bar', [...])` to render views from `assets/views/`. `extract()` is used, so view variables come in as locals.
-- Custom plugin code is namespaced by prefix (`trm_` for theme, `rbs_` / `trem_` / `gweu_` / `gwot_` / `rmm_` for plugins). Stick to the existing prefix when adding new options, meta, or AJAX actions.
+- Custom plugin code is namespaced by prefix (`trm_` for theme, `rbs_` / `trem_` / `gweu_` / `gwot_` / `rmm_` / `rss_` for plugins). Stick to the existing prefix when adding new options, meta, or AJAX actions.
 - Custom user roles in use: `customer` (standard), `marketing` (special — orders are flagged + excluded from the order tracker).
 - Block editor is disabled almost everywhere; new front-end UI should be added as Storefront templates, WC template overrides, ACF blocks, or shortcodes — **not** as core blocks.
 - WP_DEBUG is on in this XAMPP setup; `TRM_Core::write_log()` only writes when `WP_DEBUG === true`.
@@ -248,6 +260,7 @@ Deeper notes live alongside each component — they load automatically when Clau
 - [Plugin: realm-barcode-scanner](wp-content/plugins/realm-barcode-scanner/CLAUDE.md)
 - [Plugin: realm-gw-excel-uploader](wp-content/plugins/realm-gw-excel-uploader/CLAUDE.md)
 - [Plugin: realm-gw-order-tracker](wp-content/plugins/realm-gw-order-tracker/CLAUDE.md)
+- [Plugin: realm-sales-system](wp-content/plugins/realm-sales-system/CLAUDE.md)
 
 ## Still worth confirming
 

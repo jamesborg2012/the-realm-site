@@ -1,0 +1,187 @@
+.rss-new-order .rss-card {
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  padding: 16px 20px;
+  margin: 16px 0;
+  max-width: 900px;
+}
+
+.rss-new-order .rss-card h2 {
+  margin-top: 0;
+}
+
+.rss-hidden,
+.rss-new-order [hidden] {
+  display: none !important;
+}
+
+.rss-feedback {
+  max-width: 900px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 4px solid #72aee6;
+  background: #fff;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.rss-feedback.notice-error { border-left-color: #d63638; }
+.rss-feedback.notice-success { border-left-color: #00a32a; }
+.rss-feedback.notice-warning { border-left-color: #dba617; }
+
+/* Member */
+.rss-member-lookup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.rss-member-status {
+  margin: 8px 0 14px;
+  padding: 8px 12px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.rss-status-ok { background: #edfaef; color: #00692a; }
+.rss-status-warn { background: #fcf6e6; color: #8a6d00; }
+.rss-status-error { background: #fcebec; color: #a30d11; }
+
+.rss-customer-fields {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.rss-field { display: flex; flex-direction: column; gap: 4px; }
+.rss-required { color: #d63638; }
+
+/* Scanner */
+#rss-scanner #rss-video {
+  width: 100%;
+  max-width: 420px;
+  background: #000;
+  border-radius: 4px;
+  display: block;
+}
+
+.rss-scanner-controls { margin: 10px 0; display: flex; gap: 8px; }
+.rss-scan-result { font-weight: 600; min-height: 1.4em; }
+
+/* Manual product search */
+.rss-search {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.rss-search > label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.rss-search-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.rss-search-row .regular-text { flex: 1 1 240px; }
+
+.rss-search-results { margin-top: 10px; }
+.rss-search-hint { margin: 6px 0; color: #50575e; }
+
+.rss-result-list {
+  margin: 0;
+  border: 1px solid #dcdcde;
+  border-radius: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.rss-result-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin: 0;
+  border-bottom: 1px solid #f0f0f1;
+}
+
+.rss-result-item:last-child { border-bottom: none; }
+.rss-result-item:nth-child(odd) { background: #fafafa; }
+
+.rss-result-name { font-weight: 600; grid-column: 1; }
+.rss-result-meta {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 12px;
+  color: #646970;
+}
+.rss-result-price { white-space: nowrap; font-weight: 600; }
+.rss-result-add { white-space: nowrap; }
+
+/* Cart */
+.rss-cart-table { margin-top: 8px; }
+.rss-cart-table .rss-num { text-align: right; }
+.rss-cart-table tfoot th { font-size: 14px; }
+.rss-qty-input { width: 70px; text-align: right; }
+.rss-remove { color: #d63638; }
+
+/* Per-line discount */
+.rss-disc-cell { white-space: nowrap; }
+.rss-disc-input { width: 60px; text-align: right; }
+.rss-disc-type {
+  width: 52px;
+  min-height: 30px;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+.rss-disc-amount {
+  display: block;
+  font-size: 11px;
+  color: #646970;
+  margin-top: 2px;
+}
+
+/* Modal */
+.rss-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The modal lives outside .rss-new-order, so the scoped [hidden] rule above
+   doesn't reach it; display:flex would otherwise override the native hidden
+   behaviour and leave the modal stuck open on page load. */
+.rss-modal[hidden] {
+  display: none !important;
+}
+
+.rss-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.rss-modal__box {
+  position: relative;
+  background: #fff;
+  border-radius: 6px;
+  padding: 22px 26px;
+  width: 380px;
+  max-width: 90vw;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.rss-modal__box h2 { margin-top: 0; }
+.rss-modal__actions { display: flex; gap: 10px; margin-top: 16px; }
+#rss-modal-qty { width: 90px; }

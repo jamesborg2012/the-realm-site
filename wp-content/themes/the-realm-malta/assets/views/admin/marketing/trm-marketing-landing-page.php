@@ -7,9 +7,11 @@ $marketing_users = get_users([
 $table_data = [];
 foreach ($marketing_users as $marketing_user) {
     $wc_orders = wc_get_orders([
-        'status' => 'wc-processing',
-        'wc-completed',
-        'customer' => $marketing_user->ID
+        'status'      => ['wc-processing', 'wc-completed'],
+        'customer_id' => $marketing_user->ID,
+        'limit'       => -1,
+        'orderby'     => 'date',
+        'order'       => 'DESC',
     ]);
 
     /**
@@ -17,10 +19,13 @@ foreach ($marketing_users as $marketing_user) {
      * @var WC_Order_Item $order_item
      */
     foreach ($wc_orders as $wc_order) {
+        $date_created = $wc_order->get_date_created();
+        $order_date   = $date_created ? $date_created->date('dS F Y H:i:s') : '';
+
         $order_items = $wc_order->get_items();
         foreach ($order_items as $order_item) {
             $table_data[] = [
-                'date' => date('dS F Y H:i:s', strtotime($wc_order->get_date_created())),
+                'date' => $order_date,
                 'item' => $order_item->get_name(),
                 'quantity' => $order_item->get_quantity(),
                 'order' => $wc_order->get_edit_order_url(),
@@ -48,13 +53,18 @@ foreach ($marketing_users as $marketing_user) {
             </tr>
         </thead>
         <tbody>
+            <?php if (empty($table_data)): ?>
+                <tr>
+                    <td colspan="5">No marketing purchases found yet.</td>
+                </tr>
+            <?php endif; ?>
             <?php foreach ($table_data as $table_row): ?>
                 <tr>
-                    <td><?= $table_row['date'] ?></td>
-                    <td><?= $table_row['item'] ?></td>
-                    <td><?= $table_row['quantity'] ?></td>
-                    <td><a class='order-button' href="<?= $table_row['order'] ?>">ACCESS ORDER</a></td>
-                    <td><?= $table_row['total'] ?></td>
+                    <td><?= esc_html($table_row['date']) ?></td>
+                    <td><?= esc_html($table_row['item']) ?></td>
+                    <td><?= esc_html($table_row['quantity']) ?></td>
+                    <td><a class='order-button' href="<?= esc_url($table_row['order']) ?>">ACCESS ORDER</a></td>
+                    <td><?= esc_html($table_row['total']) ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>

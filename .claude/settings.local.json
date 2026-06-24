@@ -14,7 +14,18 @@
       "Bash(/d/xampp/mysql/bin/mysql.exe -uroot the_realm -e 'SELECT post_id, CONCAT\\('\\\\''['\\\\'', meta_value, '\\\\'']'\\\\''\\) AS val, LENGTH\\(meta_value\\) AS len FROM wp_postmeta WHERE meta_key='\\\\''trm_release_date'\\\\'';')",
       "Bash(/d/xampp/php/php.exe -l \"wp-content/themes/the-realm-malta/classes/coming-soon/trm-coming-soon.php\")",
       "Bash(php -l classes/preorder/trm-preorder.php)",
-      "Bash(D:/xampp/mysql/bin/mysql.exe -u root the_realm -e \"SELECT option_name, option_value FROM wp_options WHERE option_name IN \\('woocommerce_calc_taxes','woocommerce_prices_include_tax','woocommerce_tax_based_on','woocommerce_default_customer_address','woocommerce_default_country','woocommerce_tax_total_display'\\);\")"
+      "Bash(D:/xampp/mysql/bin/mysql.exe -u root the_realm -e \"SELECT option_name, option_value FROM wp_options WHERE option_name IN \\('woocommerce_calc_taxes','woocommerce_prices_include_tax','woocommerce_tax_based_on','woocommerce_default_customer_address','woocommerce_default_country','woocommerce_tax_total_display'\\);\")",
+      "Bash(php -l wp-content/plugins/realm-sales-system/includes/class-rss-core.php)",
+      "Bash(docker exec the-realm-site-wpcli-1 wp db query ' *)",
+      "Bash(docker exec *)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node --check wp-content/plugins/realm-sales-system/assets/new-order.js)",
+      "Bash(sed -i '' 's/\\\\$version = '\\\\''0.1.3'\\\\'';/$version = '\\\\''0.1.4'\\\\'';/' wp-content/plugins/realm-sales-system/includes/class-rss-core.php)",
+      "Bash(sed -i '' 's/ \\\\* Version: 0.1.3/ * Version: 0.1.4/' wp-content/plugins/realm-sales-system/realm-sales-system.php)",
+      "Bash(php -l wp-content/plugins/realm-sales-system/includes/class-rss-ajax.php)",
+      "Bash(sed -i '' 's/$version = '\\\\''0.1.4'\\\\'';/$version = '\\\\''0.1.5'\\\\'';/' wp-content/plugins/realm-sales-system/includes/class-rss-core.php)",
+      "Bash(sed -i '' 's/ \\\\* Version: 0.1.4/ * Version: 0.1.5/' wp-content/plugins/realm-sales-system/realm-sales-system.php)",
+      "Bash(php -l wp-content/themes/the-realm-malta/assets/views/admin/marketing/trm-marketing-landing-page.php)"
     ]
   }
 }
