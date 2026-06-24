@@ -17,6 +17,13 @@ See [CLAUDE.md](CLAUDE.md) for the architecture map.
 
 - [ ] **8. Completed vs Processing handling**
 - [ ] **11. Menu improvements**
+- [ ] **15. Members Export**
+- [ ] **16. Cost Prices Improvements**
+- [ ] **17. Menu improvements**
+- [ ] **18. Events Calendar Improvements**
+- [ ] **19. Visual Changes**
+- [ ] **20. Coupon Generation Fix**
+
 
 ## In Progress
 
