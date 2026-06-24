@@ -1,6 +1,4 @@
 .idea
-docker
-docker-compose.yml
 .env
 
 # Folders
@@ -35,5 +33,13 @@ package-lock.json
 # Docker artifacts
 docker-compose.override.yml
 docker/logs/
+docker/db
+
+# Composer (third-party deps are pulled on first boot, not committed)
+/vendor/
+/composer.lock
+
+# ACF PRO credentials — never commit the license key
+/auth.json
 
 .vscode
