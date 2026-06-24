@@ -1,0 +1,11 @@
+{
+    "//": "Copy to auth.json and fill in your ACF PRO credentials:  cp auth.json.example auth.json",
+    "//username": "Your ACF PRO license key (from advancedcustomfields.com → My Account → Licenses).",
+    "//password": "The site URL the license is activated for, e.g. https://therealm.com.mt",
+    "http-basic": {
+        "connect.advancedcustomfields.com": {
+            "username": "YOUR-ACF-PRO-LICENSE-KEY",
+            "password": "https://your-registered-site-url"
+        }
+    }
+}
