@@ -38,14 +38,16 @@ Assets enqueue only on the New Order screen (hook `rss-sales-system_page_rss-new
 
 | Action               | Purpose                                                                 |
 |----------------------|-------------------------------------------------------------------------|
-| `rss_verify_member`  | Resolve member number → name/surname/email/user_id + store discount %. Flags expired/inactive (no discount, but still loads details). |
-| `rss_lookup_barcode` | Resolve a scanned code → product; captures the **live** `get_price()`.  |
-| `rss_place_order`    | Validate inputs and create the WooCommerce order.                       |
+| `rss_verify_member`   | Resolve member number → name/surname/email/user_id + store discount %. Flags expired/inactive (no discount, but still loads details). |
+| `rss_lookup_barcode`  | Resolve a scanned code → product; captures the **live** `get_price()`.  |
+| `rss_search_products` | Manual product search (camera-free fallback) by name / SKU / barcode. Returns up to 25 **purchasable, in-stock** products (`is_in_stock()`, so backorder is included), **excluding the `online-only` product brand**. Each hit carries the same price fields as `rss_lookup_barcode` so a result feeds straight into the confirm modal. |
+| `rss_place_order`     | Validate inputs and create the WooCommerce order.                       |
 
 ## Order creation behaviour
 
-- Member discount = **store discount only** (`rmm_member_store_discount`, default 18), applied to **all** line items when the member is active and not expired (online-only brand split is intentionally ignored for in-store sales). Applied per line by setting line `total = subtotal × (1 − pct)`, so WC records `discount_total` with no coupon side effects.
-- Prices are read directly from the product at scan time and **frozen** in the cart table; only quantity/discount recompute afterwards.
+- **Per-line discounts.** Each cart line carries its own discount — either a **percentage** or a **fixed amount** (`disc_type` / `disc_value`, posted per item). New lines default to the member's store discount % (`rmm_member_store_discount`, default 18; 0 for guests/expired); verifying/clearing a member resets every line to that %. Staff override individual lines (e.g. honorary members on old stock). A **fixed amount is money off the inclusive/shelf price** (what the customer saves) and is backed out to ex-VAT via the product's own incl/excl ratio. The discount unit and computation live in `lineMath()` (JS) and `RSS_Ajax::line_amounts()` (PHP) — **keep the two identical** so the cart matches the order to the cent. No coupons; WC records `discount_total` from each line's `subtotal`/`total`. The member is resolved only to attribute the order (even if the discount lapsed).
+- Prices are read directly from the product at scan time and **frozen** in the cart table; only quantity/discount recompute afterwards. `rss_lookup_barcode` returns both the ex-VAT (`price_excl`) and inclusive (`price_incl`) unit price.
+- **Cart figures are computed on the ex-VAT base** so they match what the order records: the table's Unit Price / Discount / Subtotal columns are ex-VAT (matching the order's `discount_total`), while the footer **Total to Pay is inclusive** (matching the order `total`). The JS rounds each line's subtotal and discounted total independently (mirroring WC) so the totals match the order to the cent. Store runs VAT-inclusive pricing (`prices_include_tax = yes`, MT 18%).
 - Customer: hidden `user_id` → `set_customer_id()`; otherwise a guest order. Billing first/last/email from the form (address stays optional, per change item 3).
 - Order details textarea → `set_customer_note()`. Tagged with order meta `_rss_sales_system_order = 'yes'` (and `_rss_member_number` when applicable), `created_via = 'rss-sales-system'`, payment method title "In-Store Sale".
 - `calculate_totals(true)` (VAT base-country fallback, consistent with change item 12) → `set_date_paid(now)` → `update_status('completed')` (WC reduces stock once on the transition). Result: **Completed + paid**.

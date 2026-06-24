@@ -53,6 +53,17 @@ if (!defined('ABSPATH')) {
             </div>
             <div id="rss-scan-result" class="rss-scan-result"></div>
         </div>
+
+        <!-- Manual search (camera-free fallback): by name, SKU or barcode -->
+        <div class="rss-search">
+            <label for="rss-search-input"><?php esc_html_e('Or search for a product', 'rss'); ?></label>
+            <div class="rss-search-row">
+                <input type="text" id="rss-search-input" class="regular-text"
+                       placeholder="<?php esc_attr_e('Name, SKU or barcode…', 'rss'); ?>" autocomplete="off" />
+                <button type="button" class="button button-secondary" id="rss-search-btn"><?php esc_html_e('Search', 'rss'); ?></button>
+            </div>
+            <div id="rss-search-results" class="rss-search-results" aria-live="polite"></div>
+        </div>
     </div>
 
     <!-- 3. Cart table -->
@@ -63,10 +74,10 @@ if (!defined('ABSPATH')) {
             <thead>
                 <tr>
                     <th><?php esc_html_e('Product', 'rss'); ?></th>
-                    <th class="rss-num"><?php esc_html_e('Unit Price', 'rss'); ?></th>
+                    <th class="rss-num"><?php esc_html_e('Unit Price (ex VAT)', 'rss'); ?></th>
                     <th class="rss-num"><?php esc_html_e('Qty', 'rss'); ?></th>
                     <th class="rss-num"><?php esc_html_e('Discount', 'rss'); ?></th>
-                    <th class="rss-num"><?php esc_html_e('Subtotal', 'rss'); ?></th>
+                    <th class="rss-num"><?php esc_html_e('Subtotal (ex VAT)', 'rss'); ?></th>
                     <th></th>
                 </tr>
             </thead>
@@ -78,13 +89,13 @@ if (!defined('ABSPATH')) {
             <tfoot>
                 <tr>
                     <th colspan="3"></th>
-                    <th class="rss-num"><?php esc_html_e('Total Discount', 'rss'); ?></th>
+                    <th class="rss-num"><?php esc_html_e('Total Discount (ex VAT)', 'rss'); ?></th>
                     <th class="rss-num" id="rss-total-discount">—</th>
                     <th></th>
                 </tr>
                 <tr>
                     <th colspan="3"></th>
-                    <th class="rss-num"><?php esc_html_e('Total to Pay', 'rss'); ?></th>
+                    <th class="rss-num"><?php esc_html_e('Total to Pay (incl. VAT)', 'rss'); ?></th>
                     <th class="rss-num" id="rss-total-pay">—</th>
                     <th></th>
                 </tr>

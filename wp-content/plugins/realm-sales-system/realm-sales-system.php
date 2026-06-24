@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Realm Sales System
  * Description: Backend order-placing module ("Sales System") for in-store sales — member lookup, camera barcode scanning, member discounts, and one-click WooCommerce order creation.
- * Version: 0.1.0
+ * Version: 0.1.5
  * Author: James Borg
  *
  * Hard dependency: Realm Barcode Scanner (barcode -> product resolution).

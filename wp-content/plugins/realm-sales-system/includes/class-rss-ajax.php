@@ -16,6 +16,7 @@ class RSS_Ajax
     {
         add_action('wp_ajax_rss_verify_member', [$this, 'verify_member']);
         add_action('wp_ajax_rss_lookup_barcode', [$this, 'lookup_barcode']);
+        add_action('wp_ajax_rss_search_products', [$this, 'search_products']);
         add_action('wp_ajax_rss_place_order', [$this, 'place_order']);
     }
 
@@ -141,13 +142,20 @@ class RSS_Ajax
         }
 
         // Price is read straight from the product so the line captures the latest price.
-        $price = (float) $product->get_price();
+        // Both bases are sent: the inclusive price is the shelf price shown in the
+        // modal, while the ex-VAT price is what the cart math (and the order) use, so
+        // the cart's discount/subtotal figures match what the order ends up recording.
+        $price      = (float) $product->get_price();
+        $price_excl = (float) wc_get_price_excluding_tax($product);
+        $price_incl = (float) wc_get_price_including_tax($product);
 
         wp_send_json_success([
             'product_id' => (int) $product->get_id(),
             'name'       => $product->get_name(),
             'sku'        => $product->get_sku(),
             'price'      => $price,
+            'price_excl' => $price_excl,
+            'price_incl' => $price_incl,
             'price_html' => $product->get_price_html(),
         ]);
     }
@@ -171,6 +179,137 @@ class RSS_Ajax
         $id = wc_get_product_id_by_sku($code);
 
         return $id ? (int) $id : 0;
+    }
+
+    /**
+     * Search products by name, SKU or barcode for manual cart entry (the
+     * fallback when no camera is available). Returns only purchasable, in-stock
+     * products and excludes the `online-only` product brand — in-store sales
+     * only deal with items that can actually be handed over the counter.
+     */
+    public function search_products(): void
+    {
+        $this->guard();
+
+        $term = isset($_POST['term']) ? sanitize_text_field(wp_unslash($_POST['term'])) : '';
+        $term = trim($term);
+
+        if (mb_strlen($term) < 2) {
+            wp_send_json_error(['message' => __('Enter at least 2 characters to search.', 'rss')]);
+        }
+
+        global $wpdb;
+
+        $ids = [];
+
+        // 1. Exact barcode match first (reuses the scanner resolver), so a typed
+        //    or pasted barcode behaves the same as a scan.
+        $barcode_id = $this->resolve_product_id($term);
+        if ($barcode_id) {
+            $ids[] = $barcode_id;
+        }
+
+        // 2. Title or SKU LIKE. Online-only products are excluded at the SQL
+        //    level so they never consume a result slot.
+        $like = '%' . $wpdb->esc_like($term) . '%';
+        $found = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT DISTINCT p.ID
+                 FROM {$wpdb->posts} p
+                 LEFT JOIN {$wpdb->postmeta} sku ON sku.post_id = p.ID AND sku.meta_key = '_sku'
+                 WHERE p.post_type = 'product'
+                   AND p.post_status = 'publish'
+                   AND (p.post_title LIKE %s OR sku.meta_value LIKE %s)
+                   AND p.ID NOT IN (
+                       SELECT tr.object_id
+                       FROM {$wpdb->term_relationships} tr
+                       INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+                       INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+                       WHERE tt.taxonomy = 'product_brand' AND t.slug = 'online-only'
+                   )
+                 ORDER BY p.post_title ASC
+                 LIMIT 100",
+                $like,
+                $like
+            )
+        );
+
+        foreach ($found as $id) {
+            $ids[] = (int) $id;
+        }
+
+        $ids = array_values(array_unique(array_filter($ids)));
+
+        // 3. Resolve, filter (purchasable + in stock + not online-only) and cap
+        //    at a sensible number of results.
+        $limit   = 25;
+        $results = [];
+
+        foreach ($ids as $id) {
+            if (count($results) >= $limit) {
+                break;
+            }
+
+            $product = wc_get_product($id);
+
+            if (!$product || !$product->is_purchasable() || !$product->is_in_stock()) {
+                continue;
+            }
+
+            // Guard the barcode hit too (the SQL list is already filtered).
+            if (has_term('online-only', 'product_brand', $id)) {
+                continue;
+            }
+
+            $results[] = [
+                'product_id'   => (int) $product->get_id(),
+                'name'         => $product->get_name(),
+                'sku'          => $product->get_sku(),
+                'price'        => (float) $product->get_price(),
+                'price_excl'   => (float) wc_get_price_excluding_tax($product),
+                'price_incl'   => (float) wc_get_price_including_tax($product),
+                'price_html'   => $product->get_price_html(),
+                'stock_status' => $product->get_stock_status(),
+                'stock_qty'    => $product->get_stock_quantity(),
+            ];
+        }
+
+        if (empty($results)) {
+            wp_send_json_error(['message' => __('No matching in-stock products found.', 'rss')]);
+        }
+
+        wp_send_json_success(['products' => $results]);
+    }
+
+    /**
+     * Compute one order line's ex-VAT subtotal and discounted total, mirroring
+     * the cart's lineMath() in new-order.js so the order matches the screen.
+     *
+     * A percentage discount is applied to the ex-VAT base. A fixed-amount
+     * discount is money off the **inclusive** (shelf) price — what the customer
+     * saves — and is backed out to ex-VAT via the product's own incl/excl ratio.
+     * Subtotal and total are rounded independently, exactly as WC stores them.
+     *
+     * @return array{0:float,1:float} [ex-VAT subtotal, ex-VAT discounted total].
+     */
+    private function line_amounts(WC_Product $product, int $qty, string $type, float $value): array
+    {
+        $dec      = wc_get_price_decimals();
+        $ex_unit  = (float) wc_get_price_excluding_tax($product);
+        $inc_unit = (float) wc_get_price_including_tax($product);
+        $ex_sub   = $ex_unit * $qty;
+        $inc_sub  = $inc_unit * $qty;
+        $factor   = $ex_sub > 0 ? $inc_sub / $ex_sub : 1;
+
+        if ($type === 'amount') {
+            $amt          = max(0.0, min($value, $inc_sub));
+            $ex_total_raw = ($inc_sub - $amt) / $factor;
+        } else {
+            $pct          = max(0.0, min($value, 100.0));
+            $ex_total_raw = $ex_sub * (1 - $pct / 100);
+        }
+
+        return [round($ex_sub, $dec), round($ex_total_raw, $dec)];
     }
 
     /**
@@ -207,12 +346,14 @@ class RSS_Ajax
             wp_send_json_error(['message' => __('Add at least one product before placing the order.', 'rss')]);
         }
 
-        // --- Discount: store discount only, members only ----------------
-        $discount_pct = 0.0;
+        // --- Member attribution -----------------------------------------
+        // Discounts are now set per line on the client (a % or a fixed amount,
+        // defaulting to the member's standard discount). The member is resolved
+        // only to attribute the order to their account — even if their discount
+        // has lapsed, the order is still theirs.
         if ($member_number !== '') {
             $member = $this->resolve_member($member_number);
-            if ($member !== null && $member['discount_applies']) {
-                $discount_pct = $member['discount_pct'];
+            if ($member !== null) {
                 // Trust the server-resolved user id over the posted hidden field.
                 $user_id = $member['user_id'];
             }
@@ -248,14 +389,19 @@ class RSS_Ajax
                 ]);
             }
 
-            // Net (ex-tax) line amount; calculate_totals() rebuilds the tax lines.
-            $net = (float) wc_get_price_excluding_tax($product, ['qty' => $qty]);
+            // Per-line discount (a % or a fixed inclusive amount), recomputed
+            // server-side with the same maths as the cart so the order matches
+            // exactly what staff saw. calculate_totals() rebuilds the tax lines.
+            $disc_type  = (isset($row['disc_type']) && $row['disc_type'] === 'amount') ? 'amount' : 'percent';
+            $disc_value = isset($row['disc_value']) ? (float) $row['disc_value'] : 0.0;
+
+            list($subtotal, $total) = $this->line_amounts($product, $qty, $disc_type, $disc_value);
 
             $item = new WC_Order_Item_Product();
             $item->set_product($product);
             $item->set_quantity($qty);
-            $item->set_subtotal($net);
-            $item->set_total($net * (1 - $discount_pct / 100));
+            $item->set_subtotal($subtotal);
+            $item->set_total($total);
             $order->add_item($item);
         }
 

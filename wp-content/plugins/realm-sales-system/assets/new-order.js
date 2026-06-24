@@ -2,8 +2,11 @@
   'use strict'
 
   // ---- State -------------------------------------------------------------
-  // Cart rows: { product_id, name, sku, price, qty }. Price is captured once
-  // at scan time (latest product price) and never refreshed afterwards.
+  // Cart rows: { product_id, name, sku, price, priceExcl, priceIncl, qty }.
+  // Prices are captured once at scan time (latest product price) and never
+  // refreshed afterwards. Line subtotals/discounts are computed on the ex-VAT
+  // base (priceExcl) so the figures match what the order records; the grand
+  // Total to Pay uses the inclusive price (priceIncl) — what the customer pays.
   var cart = []
   var discountPct = 0 // applied store discount % (0 when no/expired member)
   var pendingProduct = null // product awaiting modal confirmation
@@ -20,6 +23,13 @@
   var $totalDiscount = $('#rss-total-discount')
   var $totalPay = $('#rss-total-pay')
   var $scanResult = $('#rss-scan-result')
+  var $searchInput = $('#rss-search-input')
+  var $searchBtn = $('#rss-search-btn')
+  var $searchResults = $('#rss-search-results')
+
+  // Latest search hits, indexed so result rows can reference them by position
+  // (avoids stuffing the full product payload into DOM data attributes).
+  var searchResults = []
 
   var video = document.getElementById('rss-video')
   var canvas = document.getElementById('rss-canvas')
@@ -38,6 +48,15 @@
     : null
 
   // ---- Helpers -----------------------------------------------------------
+  // Round to the store's price decimals. WooCommerce rounds each line's subtotal
+  // and total before deriving the discount, so the cart mirrors that (rounding
+  // the product first, then subtracting) to land on the same figures as the order.
+  function roundDec (value) {
+    var dec = rssData.decimals
+    var factor = Math.pow(10, dec)
+    return Math.round(((Number(value) || 0) + Number.EPSILON) * factor) / factor
+  }
+
   function money (value) {
     var n = (Number(value) || 0).toFixed(rssData.decimals)
     return rssData.currencySym + n
@@ -63,6 +82,40 @@
     return new Promise(function (r) { setTimeout(r, ms) })
   }
 
+  // Compute a line's figures from its frozen prices, qty and discount. A line
+  // discount is either a percentage or a fixed amount; the fixed amount is money
+  // off the inclusive (shelf) price — what the customer saves — so it is backed
+  // out to the ex-VAT base via the product's own incl/excl ratio. Subtotal and
+  // discounted total are rounded independently (mirroring WooCommerce), so the
+  // figures match the order the server builds with the identical calculation.
+  function lineMath (row) {
+    var qty = row.qty
+    var exSub = row.priceExcl * qty
+    var incSub = row.priceIncl * qty
+    var taxFactor = exSub > 0 ? incSub / exSub : 1
+
+    var exTotalRaw
+    if (row.discType === 'amount') {
+      var amt = Math.max(0, Math.min(Number(row.discValue) || 0, incSub))
+      exTotalRaw = (incSub - amt) / taxFactor
+    } else {
+      var pct = Math.max(0, Math.min(Number(row.discValue) || 0, 100))
+      exTotalRaw = exSub * (1 - pct / 100)
+    }
+
+    var exSubR = roundDec(exSub)
+    var exTotalR = roundDec(exTotalRaw)
+    return {
+      exSubtotal: exSubR,
+      exTotal: exTotalR,
+      lineDiscount: exSubR - exTotalR,
+      // Inclusive total derived from the rounded ex-VAT total (× tax factor),
+      // exactly how WC re-adds tax — so Total to Pay matches the order to the cent.
+      incTotal: roundDec(exTotalR * taxFactor),
+      incSubtotal: roundDec(incSub)
+    }
+  }
+
   // ---- Cart rendering ----------------------------------------------------
   function renderCart () {
     $cartBody.empty()
@@ -80,16 +133,14 @@
     var totalPay = 0
 
     cart.forEach(function (row, index) {
-      var lineSubtotal = row.price * row.qty
-      var lineDiscount = lineSubtotal * (discountPct / 100)
-      var lineTotal = lineSubtotal - lineDiscount
+      var m = lineMath(row)
 
-      totalDiscount += lineDiscount
-      totalPay += lineTotal
+      totalDiscount += m.lineDiscount
+      totalPay += m.incTotal
 
       var $tr = $('<tr/>')
       $tr.append($('<td/>').text(row.name + (row.sku ? ' (' + row.sku + ')' : '')))
-      $tr.append($('<td class="rss-num"/>').text(money(row.price)))
+      $tr.append($('<td class="rss-num"/>').text(money(row.priceExcl)))
 
       var $qtyCell = $('<td class="rss-num"/>')
       var $qtyInput = $('<input type="number" min="1" step="1" class="rss-qty-input"/>')
@@ -98,8 +149,21 @@
       $qtyCell.append($qtyInput)
       $tr.append($qtyCell)
 
-      $tr.append($('<td class="rss-num"/>').text(money(lineDiscount)))
-      $tr.append($('<td class="rss-num"/>').text(money(lineTotal)))
+      // Editable per-line discount: a value + a type toggle (% or currency).
+      var $discCell = $('<td class="rss-num rss-disc-cell"/>')
+      var $discInput = $('<input type="number" min="0" class="rss-disc-input"/>')
+        .attr('step', row.discType === 'amount' ? '0.01' : '1')
+        .val(row.discValue)
+        .data('index', index)
+      var $discType = $('<select class="rss-disc-type"/>').data('index', index)
+      $discType.append($('<option value="percent">%</option>'))
+      $discType.append($('<option value="amount"></option>').val('amount').text(rssData.currencySym))
+      $discType.val(row.discType)
+      $discCell.append($discInput).append($discType)
+      $discCell.append($('<span class="rss-disc-amount"/>').text('−' + money(m.lineDiscount)))
+      $tr.append($discCell)
+
+      $tr.append($('<td class="rss-num"/>').text(money(m.exTotal)))
 
       var $removeCell = $('<td class="rss-num"/>')
       var $remove = $('<button type="button" class="button-link rss-remove">Remove</button>')
@@ -119,12 +183,22 @@
     if (existing) {
       existing.qty += qty
     } else {
+      var priceIncl = Number(product.price_incl)
+      if (isNaN(priceIncl)) priceIncl = Number(product.price) || 0
+      var priceExcl = Number(product.price_excl)
+      if (isNaN(priceExcl)) priceExcl = priceIncl
       cart.push({
         product_id: product.product_id,
         name: product.name,
         sku: product.sku,
         price: Number(product.price) || 0,
-        qty: qty
+        priceExcl: priceExcl,
+        priceIncl: priceIncl,
+        qty: qty,
+        // New lines default to the member's standard store discount (0 if none);
+        // staff can override the value or switch to a fixed amount per line.
+        discType: 'percent',
+        discValue: discountPct
       })
     }
     renderCart()
@@ -158,6 +232,9 @@
       $userId.val(d.user_id || 0)
 
       discountPct = d.discount_applies ? Number(d.discount_pct) || 0 : 0
+      // Applying a member resets every line to their standard discount; staff
+      // then bump individual lines (e.g. honorary members on old stock).
+      applyDiscountToAllLines(discountPct)
 
       var cls = d.discount_applies ? 'rss-status-ok' : 'rss-status-warn'
       var msg = d.message || ('Member verified — ' + discountPct + '% store discount applied.')
@@ -173,6 +250,16 @@
   function resetMemberDiscount () {
     discountPct = 0
     $userId.val(0)
+    applyDiscountToAllLines(0)
+  }
+
+  // Reset every cart line to a flat percentage discount (used when the member
+  // changes). renderCart() is called by the caller or here.
+  function applyDiscountToAllLines (pct) {
+    cart.forEach(function (r) {
+      r.discType = 'percent'
+      r.discValue = pct
+    })
     renderCart()
   }
 
@@ -185,6 +272,18 @@
 
   // ---- Scanner lifecycle -------------------------------------------------
   function startCamera () {
+    // The camera API only exists in a secure context (HTTPS or http://localhost).
+    // On plain HTTP, navigator.mediaDevices is undefined — guard so we surface a
+    // helpful message instead of an uncaught TypeError.
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      $scanResult.text(
+        window.isSecureContext
+          ? 'Camera not available on this device/browser.'
+          : 'Camera needs a secure connection (HTTPS or localhost). This page is served over plain HTTP, so the browser blocks camera access.'
+      )
+      return
+    }
+
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       .then(function (s) {
         stream = s
@@ -340,6 +439,75 @@
     resumeScanning()
   }
 
+  // ---- Product search (camera-free manual entry) -------------------------
+  function doSearch () {
+    var term = $.trim($searchInput.val())
+    if (term.length < 2) {
+      searchResults = []
+      $searchResults.html('<p class="rss-search-hint">Enter at least 2 characters to search.</p>')
+      return
+    }
+
+    $searchBtn.prop('disabled', true)
+    $searchResults.html('<p class="rss-search-hint">Searching…</p>')
+
+    $.post(rssData.ajaxUrl, {
+      action: 'rss_search_products',
+      nonce: rssData.nonce,
+      term: term
+    }).done(function (res) {
+      if (!res.success) {
+        searchResults = []
+        $searchResults.html(
+          '<p class="rss-search-hint">' +
+          (res.data && res.data.message ? res.data.message : 'No products found.') +
+          '</p>'
+        )
+        return
+      }
+      searchResults = res.data.products || []
+      renderSearchResults()
+    }).fail(function () {
+      $searchResults.html('<p class="rss-search-hint">' + rssData.i18n.networkError + '</p>')
+    }).always(function () {
+      $searchBtn.prop('disabled', false)
+    })
+  }
+
+  function renderSearchResults () {
+    $searchResults.empty()
+
+    if (!searchResults.length) {
+      $searchResults.html('<p class="rss-search-hint">No products found.</p>')
+      return
+    }
+
+    var $list = $('<ul class="rss-result-list"/>')
+
+    searchResults.forEach(function (p, i) {
+      var meta = []
+      if (p.sku) meta.push(p.sku)
+      if (p.stock_qty !== null && typeof p.stock_qty !== 'undefined') {
+        meta.push('stock: ' + p.stock_qty)
+      } else if (p.stock_status === 'onbackorder') {
+        meta.push('on backorder')
+      }
+
+      var $li = $('<li class="rss-result-item"/>')
+      $li.append($('<span class="rss-result-name"/>').text(p.name))
+      $li.append($('<span class="rss-result-meta"/>').text(meta.join(' · ')))
+      $li.append($('<span class="rss-result-price"/>').html(p.price_html || money(p.price)))
+      $li.append(
+        $('<button type="button" class="button button-small rss-result-add"/>')
+          .text('Add')
+          .attr('data-index', i)
+      )
+      $list.append($li)
+    })
+
+    $searchResults.append($list)
+  }
+
   // ---- Place order -------------------------------------------------------
   function placeOrder () {
     clearFeedback()
@@ -372,7 +540,12 @@
     $btn.prop('disabled', true).text(rssData.i18n.placing)
 
     var items = cart.map(function (r) {
-      return { product_id: r.product_id, qty: r.qty }
+      return {
+        product_id: r.product_id,
+        qty: r.qty,
+        disc_type: r.discType,
+        disc_value: r.discValue
+      }
     })
 
     $.post(rssData.ajaxUrl, {
@@ -421,6 +594,18 @@
   $('#rss-start-scan').on('click', startCamera)
   $('#rss-stop-scan').on('click', stopCamera)
 
+  $searchBtn.on('click', doSearch)
+  $searchInput.on('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); doSearch() }
+  })
+  $searchResults.on('click', '.rss-result-add', function () {
+    var index = parseInt($(this).attr('data-index'), 10)
+    var product = searchResults[index]
+    if (product) {
+      openModal(product)
+    }
+  })
+
   $('#rss-modal-add').on('click', confirmModalAdd)
   $('#rss-modal-cancel').on('click', function () {
     closeModal()
@@ -432,6 +617,34 @@
     var qty = parseInt($(this).val() || '1', 10)
     if (isNaN(qty) || qty < 1) qty = 1
     cart[index].qty = qty
+    renderCart()
+  })
+
+  $cartBody.on('change', '.rss-disc-input', function () {
+    var index = $(this).data('index')
+    var value = parseFloat($(this).val())
+    if (isNaN(value) || value < 0) value = 0
+    cart[index].discValue = value
+    renderCart()
+  })
+
+  $cartBody.on('change', '.rss-disc-type', function () {
+    var index = $(this).data('index')
+    var row = cart[index]
+    var newType = this.value === 'amount' ? 'amount' : 'percent'
+    if (newType === row.discType) return
+
+    // Preserve the discount across the toggle: carry the current line discount
+    // into the new unit so the customer's price doesn't jump on a unit switch.
+    var m = lineMath(row)
+    if (newType === 'amount') {
+      row.discValue = roundDec(m.incSubtotal - m.incTotal) // inclusive € off
+    } else {
+      row.discValue = m.incSubtotal > 0
+        ? roundDec((m.incSubtotal - m.incTotal) / m.incSubtotal * 100)
+        : 0
+    }
+    row.discType = newType
     renderCart()
   })
 

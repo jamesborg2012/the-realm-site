@@ -75,7 +75,7 @@ class RSS_Core
             return;
         }
 
-        $version = '0.1.0';
+        $version = '0.1.5';
 
         wp_enqueue_script(
             'quagga',

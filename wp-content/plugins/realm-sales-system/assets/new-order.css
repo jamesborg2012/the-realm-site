@@ -70,12 +70,84 @@
 .rss-scanner-controls { margin: 10px 0; display: flex; gap: 8px; }
 .rss-scan-result { font-weight: 600; min-height: 1.4em; }
 
+/* Manual product search */
+.rss-search {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.rss-search > label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.rss-search-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.rss-search-row .regular-text { flex: 1 1 240px; }
+
+.rss-search-results { margin-top: 10px; }
+.rss-search-hint { margin: 6px 0; color: #50575e; }
+
+.rss-result-list {
+  margin: 0;
+  border: 1px solid #dcdcde;
+  border-radius: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.rss-result-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin: 0;
+  border-bottom: 1px solid #f0f0f1;
+}
+
+.rss-result-item:last-child { border-bottom: none; }
+.rss-result-item:nth-child(odd) { background: #fafafa; }
+
+.rss-result-name { font-weight: 600; grid-column: 1; }
+.rss-result-meta {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 12px;
+  color: #646970;
+}
+.rss-result-price { white-space: nowrap; font-weight: 600; }
+.rss-result-add { white-space: nowrap; }
+
 /* Cart */
 .rss-cart-table { margin-top: 8px; }
 .rss-cart-table .rss-num { text-align: right; }
 .rss-cart-table tfoot th { font-size: 14px; }
 .rss-qty-input { width: 70px; text-align: right; }
 .rss-remove { color: #d63638; }
+
+/* Per-line discount */
+.rss-disc-cell { white-space: nowrap; }
+.rss-disc-input { width: 60px; text-align: right; }
+.rss-disc-type {
+  width: 52px;
+  min-height: 30px;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+.rss-disc-amount {
+  display: block;
+  font-size: 11px;
+  color: #646970;
+  margin-top: 2px;
+}
 
 /* Modal */
 .rss-modal {
@@ -85,6 +157,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* The modal lives outside .rss-new-order, so the scoped [hidden] rule above
+   doesn't reach it; display:flex would otherwise override the native hidden
+   behaviour and leave the modal stuck open on page load. */
+.rss-modal[hidden] {
+  display: none !important;
 }
 
 .rss-modal__backdrop {
