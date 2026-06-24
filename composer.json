@@ -1,0 +1,63 @@
+{
+    "name": "the-realm/site",
+    "description": "The Realm Malta — third-party WordPress dependencies (core themes/plugins) managed via Composer + WPackagist. Custom code (the-realm-malta theme + realm-* plugins) is version-controlled in this repo, not here.",
+    "type": "project",
+    "license": "proprietary",
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://wpackagist.org",
+            "only": [
+                "wpackagist-plugin/*",
+                "wpackagist-theme/*"
+            ]
+        },
+        {
+            "type": "composer",
+            "url": "https://connect.advancedcustomfields.com",
+            "only": [
+                "wpengine/advanced-custom-fields-pro"
+            ]
+        }
+    ],
+    "require": {
+        "php": ">=8.0",
+        "composer/installers": "^2.0",
+
+        "wpackagist-theme/storefront": "4.6.*",
+
+        "wpackagist-plugin/woocommerce": "9.6.*",
+        "wpackagist-plugin/woocommerce-paypal-payments": "*",
+        "wpackagist-plugin/woocommerce-payments": "*",
+        "wpackagist-plugin/meta-box": "*",
+        "wpackagist-plugin/megamenu": "*",
+        "wpackagist-plugin/members": "*",
+        "wpackagist-plugin/ultimate-blocks": "*",
+        "wpackagist-plugin/wpforms-lite": "*",
+        "wpackagist-plugin/wordpress-seo": "*",
+        "wpackagist-plugin/classic-editor": "*",
+        "wpackagist-plugin/classic-widgets": "*",
+        "wpackagist-plugin/disable-gutenberg": "*",
+
+        "wpengine/advanced-custom-fields-pro": "*"
+    },
+    "comment-acf-pro": "ACF PRO is served from connect.advancedcustomfields.com and needs credentials. Copy auth.json.example to auth.json and fill in your license key (username) + registered site URL (password). auth.json is gitignored and mounted into Composer's home dir (never the web root).",
+    "config": {
+        "allow-plugins": {
+            "composer/installers": true
+        }
+    },
+    "extra": {
+        "installer-paths": {
+            "wp-content/plugins/{$name}/": [
+                "type:wordpress-plugin"
+            ],
+            "wp-content/themes/{$name}/": [
+                "type:wordpress-theme"
+            ],
+            "wp-content/mu-plugins/{$name}/": [
+                "type:wordpress-muplugin"
+            ]
+        }
+    }
+}
