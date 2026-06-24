@@ -18,6 +18,7 @@ class RSS_Ajax
         add_action('wp_ajax_rss_lookup_barcode', [$this, 'lookup_barcode']);
         add_action('wp_ajax_rss_search_products', [$this, 'search_products']);
         add_action('wp_ajax_rss_place_order', [$this, 'place_order']);
+        add_action('wp_ajax_rss_place_marketing_order', [$this, 'place_marketing_order']);
     }
 
     /**
@@ -313,6 +314,154 @@ class RSS_Ajax
     }
 
     /**
+     * Add the posted cart rows to an order as line items, re-resolving each
+     * product and recomputing its figures server-side (never trusting client
+     * prices). When $allow_discounts is false (marketing orders) every line is
+     * charged at full price regardless of any discount the client sent.
+     *
+     * Dies with a JSON error if a product is no longer purchasable.
+     */
+    private function add_items_to_order(WC_Order $order, array $items, bool $allow_discounts): void
+    {
+        foreach ($items as $row) {
+            $product_id = isset($row['product_id']) ? absint($row['product_id']) : 0;
+            $qty        = isset($row['qty']) ? max(1, absint($row['qty'])) : 0;
+
+            if (!$product_id || !$qty) {
+                continue;
+            }
+
+            $product = wc_get_product($product_id);
+            if (!$product || !$product->is_purchasable()) {
+                wp_send_json_error([
+                    'message' => sprintf(__('A product (ID %d) is no longer available for sale.', 'rss'), $product_id),
+                ]);
+            }
+
+            // Per-line discount (a % or a fixed inclusive amount), recomputed
+            // server-side with the same maths as the cart so the order matches
+            // exactly what staff saw. calculate_totals() rebuilds the tax lines.
+            if ($allow_discounts) {
+                $disc_type  = (isset($row['disc_type']) && $row['disc_type'] === 'amount') ? 'amount' : 'percent';
+                $disc_value = isset($row['disc_value']) ? (float) $row['disc_value'] : 0.0;
+            } else {
+                $disc_type  = 'percent';
+                $disc_value = 0.0;
+            }
+
+            list($subtotal, $total) = $this->line_amounts($product, $qty, $disc_type, $disc_value);
+
+            $item = new WC_Order_Item_Product();
+            $item->set_product($product);
+            $item->set_quantity($qty);
+            $item->set_subtotal($subtotal);
+            $item->set_total($total);
+            $order->add_item($item);
+        }
+    }
+
+    /**
+     * Resolve the store marketing account an internal marketing order is
+     * attributed to: the `realm.marketing` user if it exists, otherwise the
+     * first user carrying the `marketing` role. Null when neither is found.
+     */
+    private function resolve_marketing_user(): ?WP_User
+    {
+        $user = get_user_by('login', 'realm.marketing');
+        if ($user instanceof WP_User) {
+            return $user;
+        }
+
+        $users = get_users(['role' => 'marketing', 'number' => 1]);
+        if (!empty($users)) {
+            return reset($users);
+        }
+
+        return null;
+    }
+
+    /**
+     * Create a marketing (internal) WooCommerce order: always attributed to the
+     * store marketing account, never carrying a member number or discounts.
+     */
+    public function place_marketing_order(): void
+    {
+        $this->guard();
+
+        if (!function_exists('wc_create_order')) {
+            wp_send_json_error(['message' => __('WooCommerce is not available.', 'rss')]);
+        }
+
+        $marketing_user = $this->resolve_marketing_user();
+        if ($marketing_user === null) {
+            wp_send_json_error([
+                'message' => __('No marketing account found. Create a user named "realm.marketing" (or any user with the "marketing" role) before placing marketing orders.', 'rss'),
+            ]);
+        }
+
+        $notes     = isset($_POST['order_notes']) ? sanitize_textarea_field(wp_unslash($_POST['order_notes'])) : '';
+        $items_raw = isset($_POST['items']) ? wp_unslash($_POST['items']) : '';
+        $items     = json_decode($items_raw, true);
+
+        if (!is_array($items) || empty($items)) {
+            wp_send_json_error(['message' => __('Add at least one product before placing the order.', 'rss')]);
+        }
+
+        $order = wc_create_order();
+
+        if (is_wp_error($order)) {
+            wp_send_json_error(['message' => __('Could not create the order.', 'rss')]);
+        }
+
+        $order->set_customer_id($marketing_user->ID);
+
+        // Billing identity comes from the marketing account itself (no customer
+        // fields on the marketing page), falling back to its display name.
+        $first = get_user_meta($marketing_user->ID, 'billing_first_name', true) ?: get_user_meta($marketing_user->ID, 'first_name', true);
+        $last  = get_user_meta($marketing_user->ID, 'billing_last_name', true) ?: get_user_meta($marketing_user->ID, 'last_name', true);
+        if ($first === '' && $last === '') {
+            $first = $marketing_user->display_name;
+        }
+        $order->set_billing_first_name($first);
+        $order->set_billing_last_name($last);
+        $order->set_billing_email($marketing_user->user_email);
+
+        $this->add_items_to_order($order, $items, false);
+
+        if (empty($order->get_items())) {
+            wp_send_json_error(['message' => __('No valid products to add to the order.', 'rss')]);
+        }
+
+        if ($notes !== '') {
+            $order->set_customer_note($notes);
+        }
+
+        $order->set_created_via('rss-sales-system');
+        $order->set_payment_method('rss_in_store');
+        $order->set_payment_method_title(__('In-Store Sale (Marketing)', 'rss'));
+        $order->update_meta_data('_rss_sales_system_order', 'yes');
+        $order->update_meta_data('_rss_marketing_order', 'yes');
+        // Stay inline with the rest of the marketing logic: the theme flags
+        // marketing orders with this meta on checkout, but programmatic orders
+        // skip that hook, so we set it here. (Order-tracker exclusion is by the
+        // customer's marketing role, which is already satisfied above.)
+        $order->update_meta_data('trm_is_marketing_order', 'yes');
+
+        $order->calculate_totals(true);
+        $order->set_date_paid(time());
+        $order->save();
+
+        $order->update_status('completed', __('Marketing order placed via Sales System (internal purchase).', 'rss'));
+
+        wp_send_json_success([
+            'order_id'   => $order->get_id(),
+            'edit_url'   => $order->get_edit_order_url(),
+            'total_html' => wc_price($order->get_total()),
+            'message'    => sprintf(__('Marketing order #%d placed successfully.', 'rss'), $order->get_id()),
+        ]);
+    }
+
+    /**
      * Create the WooCommerce order from the page inputs.
      */
     public function place_order(): void
@@ -374,36 +523,7 @@ class RSS_Ajax
         $order->set_billing_last_name($last);
         $order->set_billing_email($email);
 
-        foreach ($items as $row) {
-            $product_id = isset($row['product_id']) ? absint($row['product_id']) : 0;
-            $qty        = isset($row['qty']) ? max(1, absint($row['qty'])) : 0;
-
-            if (!$product_id || !$qty) {
-                continue;
-            }
-
-            $product = wc_get_product($product_id);
-            if (!$product || !$product->is_purchasable()) {
-                wp_send_json_error([
-                    'message' => sprintf(__('A product (ID %d) is no longer available for sale.', 'rss'), $product_id),
-                ]);
-            }
-
-            // Per-line discount (a % or a fixed inclusive amount), recomputed
-            // server-side with the same maths as the cart so the order matches
-            // exactly what staff saw. calculate_totals() rebuilds the tax lines.
-            $disc_type  = (isset($row['disc_type']) && $row['disc_type'] === 'amount') ? 'amount' : 'percent';
-            $disc_value = isset($row['disc_value']) ? (float) $row['disc_value'] : 0.0;
-
-            list($subtotal, $total) = $this->line_amounts($product, $qty, $disc_type, $disc_value);
-
-            $item = new WC_Order_Item_Product();
-            $item->set_product($product);
-            $item->set_quantity($qty);
-            $item->set_subtotal($subtotal);
-            $item->set_total($total);
-            $order->add_item($item);
-        }
+        $this->add_items_to_order($order, $items, true);
 
         if (empty($order->get_items())) {
             wp_send_json_error(['message' => __('No valid products to add to the order.', 'rss')]);

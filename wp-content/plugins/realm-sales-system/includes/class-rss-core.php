@@ -9,15 +9,19 @@ if (!defined('ABSPATH')) {
  */
 class RSS_Core
 {
-    const CAP            = 'manage_woocommerce';
-    const MENU_SLUG      = 'rss-sales-system';
-    const NEW_ORDER_SLUG = 'rss-new-order';
-    const NONCE_ACTION   = 'rss_sales_system';
+    const CAP                  = 'manage_woocommerce';
+    const MENU_SLUG            = 'rss-sales-system';
+    const NEW_ORDER_SLUG       = 'rss-new-order';
+    const MARKETING_ORDER_SLUG = 'rss-marketing-order';
+    const NONCE_ACTION         = 'rss_sales_system';
 
     private static $instance = null;
 
     /** Page hook suffix of the New Order screen, captured from add_submenu_page(). */
     private $new_order_hook = '';
+
+    /** Page hook suffix of the New Marketing Order screen. */
+    private $marketing_order_hook = '';
 
     public static function instance(): RSS_Core
     {
@@ -66,16 +70,28 @@ class RSS_Core
             self::NEW_ORDER_SLUG,
             [$this, 'render_new_order']
         );
+
+        $this->marketing_order_hook = add_submenu_page(
+            self::MENU_SLUG,
+            __('New Marketing Order', 'rss'),
+            __('New Marketing Order', 'rss'),
+            self::CAP,
+            self::MARKETING_ORDER_SLUG,
+            [$this, 'render_marketing_order']
+        );
     }
 
     public function enqueue_assets($hook): void
     {
-        // Only on the New Order screen (hook suffix captured from add_submenu_page).
-        if ($hook !== $this->new_order_hook) {
+        // Only on the order-placing screens (hook suffixes captured from
+        // add_submenu_page). Both the standard and marketing order pages share
+        // the same scanner/cart JS, parametrised by a `mode` flag below.
+        $is_marketing = ($hook === $this->marketing_order_hook);
+        if ($hook !== $this->new_order_hook && !$is_marketing) {
             return;
         }
 
-        $version = '0.1.5';
+        $version = '0.2.0';
 
         wp_enqueue_script(
             'quagga',
@@ -98,6 +114,9 @@ class RSS_Core
             'nonce'        => wp_create_nonce(self::NONCE_ACTION),
             'currencySym'  => get_woocommerce_currency_symbol(),
             'decimals'     => wc_get_price_decimals(),
+            // 'marketing' hides the member section + per-line discounts and posts
+            // to the marketing place-order endpoint; 'order' is the standard flow.
+            'mode'         => $is_marketing ? 'marketing' : 'order',
             'i18n'         => [
                 'missingFields' => __('Please fill in the Name, Surname and Email fields.', 'rss'),
                 'emptyCart'     => __('Please add at least one product before placing the order.', 'rss'),
@@ -123,6 +142,13 @@ class RSS_Core
 
     public function render_new_order(): void
     {
+        $rss_is_marketing = false;
+        require RSS_PLUGIN_DIR . 'views/new-order.php';
+    }
+
+    public function render_marketing_order(): void
+    {
+        $rss_is_marketing = true;
         require RSS_PLUGIN_DIR . 'views/new-order.php';
     }
 }

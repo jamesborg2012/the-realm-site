@@ -17,9 +17,9 @@ includes/
 └── class-rss-ajax.php          # RSS_Ajax: verify member, lookup barcode, place order
 views/
 ├── landing.php                 # "The Realm Order Placing Module" placeholder
-└── new-order.php               # New Order UI
+└── new-order.php               # New Order UI — shared by the standard + marketing pages (see $rss_is_marketing)
 assets/
-├── new-order.js                # cart state, camera scanner, confirm modal, live totals
+├── new-order.js                # cart state, camera scanner, confirm modal, live totals (mode-aware via rssData.mode)
 └── new-order.css
 ```
 
@@ -27,12 +27,21 @@ No custom DB tables. No autoloader — `realm-sales-system.php` `require`s the t
 
 ## Admin menu (`RSS_Core`, cap `manage_woocommerce`)
 
-| Slug                | Page                                              |
-|---------------------|---------------------------------------------------|
-| `rss-sales-system`  | Landing (placeholder text, to be amended)         |
-| `rss-new-order`     | New Order — the order-placing UI                  |
+| Slug                   | Page                                              |
+|------------------------|---------------------------------------------------|
+| `rss-sales-system`     | Landing (placeholder text, to be amended)         |
+| `rss-new-order`        | New Order — the standard order-placing UI         |
+| `rss-marketing-order`  | New Marketing Order — internal marketing purchases |
 
-Assets enqueue only on the New Order screen (hook `rss-sales-system_page_rss-new-order`); Quagga loaded from cdn (unpkg), same source as `realm-barcode-scanner`.
+Assets enqueue on **both** order screens (hooks `…_page_rss-new-order` and `…_page_rss-marketing-order`); Quagga loaded from cdn (unpkg), same source as `realm-barcode-scanner`.
+
+### Marketing orders (mode flag)
+
+The standard and marketing pages share one view (`new-order.php`) and one script (`new-order.js`), parametrised by a **mode flag**:
+
+- `RSS_Core::render_marketing_order()` sets `$rss_is_marketing = true` before requiring the view; the view drops the **member section**, the **customer Name/Surname/Email fields** and the cart's **Discount column** (and its Total Discount footer row), narrowing the cart from 6 columns to 5.
+- Enqueue passes `rssData.mode = 'marketing'`; `new-order.js` reads it into `isMarketing` (and `cartCols`) so cart rendering omits the discount cell and `placeOrder()` posts to `rss_place_marketing_order` with no member/customer payload.
+- The scanner, product search, confirm modal and live totals are single-sourced — only the member/discount/customer bits are gated.
 
 ## AJAX (admin-only, no nopriv; nonce `rss_sales_system`, cap `manage_woocommerce`)
 
@@ -42,6 +51,7 @@ Assets enqueue only on the New Order screen (hook `rss-sales-system_page_rss-new
 | `rss_lookup_barcode`  | Resolve a scanned code → product; captures the **live** `get_price()`.  |
 | `rss_search_products` | Manual product search (camera-free fallback) by name / SKU / barcode. Returns up to 25 **purchasable, in-stock** products (`is_in_stock()`, so backorder is included), **excluding the `online-only` product brand**. Each hit carries the same price fields as `rss_lookup_barcode` so a result feeds straight into the confirm modal. |
 | `rss_place_order`     | Validate inputs and create the WooCommerce order.                       |
+| `rss_place_marketing_order` | Create an **internal marketing order** — no member, no customer fields, no discounts. Attributed to the `realm.marketing` user, or the first user with the `marketing` role, else errors (no order created). |
 
 ## Order creation behaviour
 
@@ -51,6 +61,14 @@ Assets enqueue only on the New Order screen (hook `rss-sales-system_page_rss-new
 - Customer: hidden `user_id` → `set_customer_id()`; otherwise a guest order. Billing first/last/email from the form (address stays optional, per change item 3).
 - Order details textarea → `set_customer_note()`. Tagged with order meta `_rss_sales_system_order = 'yes'` (and `_rss_member_number` when applicable), `created_via = 'rss-sales-system'`, payment method title "In-Store Sale".
 - `calculate_totals(true)` (VAT base-country fallback, consistent with change item 12) → `set_date_paid(now)` → `update_status('completed')` (WC reduces stock once on the transition). Result: **Completed + paid**.
+
+### Marketing order creation (`rss_place_marketing_order`)
+
+Same skeleton as `rss_place_order` (frozen prices, server-side recompute, completed + paid), but:
+
+- **Customer** = resolved by `resolve_marketing_user()` (`realm.marketing` login → first `marketing`-role user → null). Null aborts the order with an error. Billing first/last/email are read from that account (display name fallback) since the page has no customer fields.
+- **No discounts:** the shared `add_items_to_order($order, $items, false)` charges every line at full price (line `total = subtotal`), ignoring any discount payload.
+- **Marketing meta:** sets `_rss_marketing_order = 'yes'` and `trm_is_marketing_order = 'yes'` (the theme's `TRM_WC_Hooks::check_marketing_order()` only fires on checkout, which `wc_create_order()` bypasses — so we set it directly to stay inline with the marketing logic). Order-tracker exclusion is already satisfied because the customer carries the `marketing` role. Payment method title is "In-Store Sale (Marketing)".
 
 ## Conventions
 

@@ -11,6 +11,12 @@
   var discountPct = 0 // applied store discount % (0 when no/expired member)
   var pendingProduct = null // product awaiting modal confirmation
 
+  // Marketing mode (internal store purchases): no member section, no customer
+  // fields and no per-line discounts. The cart drops its Discount column and the
+  // order is posted to the marketing place-order endpoint.
+  var isMarketing = rssData.mode === 'marketing'
+  var cartCols = isMarketing ? 5 : 6
+
   // ---- Elements ----------------------------------------------------------
   var $feedback = $('#rss-feedback')
   var $memberNumber = $('#rss-member-number')
@@ -122,7 +128,7 @@
 
     if (!cart.length) {
       $cartBody.append(
-        '<tr class="rss-cart-empty"><td colspan="6">No products added yet.</td></tr>'
+        '<tr class="rss-cart-empty"><td colspan="' + cartCols + '">No products added yet.</td></tr>'
       )
       $totalDiscount.text('—')
       $totalPay.text('—')
@@ -150,18 +156,21 @@
       $tr.append($qtyCell)
 
       // Editable per-line discount: a value + a type toggle (% or currency).
-      var $discCell = $('<td class="rss-num rss-disc-cell"/>')
-      var $discInput = $('<input type="number" min="0" class="rss-disc-input"/>')
-        .attr('step', row.discType === 'amount' ? '0.01' : '1')
-        .val(row.discValue)
-        .data('index', index)
-      var $discType = $('<select class="rss-disc-type"/>').data('index', index)
-      $discType.append($('<option value="percent">%</option>'))
-      $discType.append($('<option value="amount"></option>').val('amount').text(rssData.currencySym))
-      $discType.val(row.discType)
-      $discCell.append($discInput).append($discType)
-      $discCell.append($('<span class="rss-disc-amount"/>').text('−' + money(m.lineDiscount)))
-      $tr.append($discCell)
+      // Marketing orders carry no discounts, so the column is omitted entirely.
+      if (!isMarketing) {
+        var $discCell = $('<td class="rss-num rss-disc-cell"/>')
+        var $discInput = $('<input type="number" min="0" class="rss-disc-input"/>')
+          .attr('step', row.discType === 'amount' ? '0.01' : '1')
+          .val(row.discValue)
+          .data('index', index)
+        var $discType = $('<select class="rss-disc-type"/>').data('index', index)
+        $discType.append($('<option value="percent">%</option>'))
+        $discType.append($('<option value="amount"></option>').val('amount').text(rssData.currencySym))
+        $discType.val(row.discType)
+        $discCell.append($discInput).append($discType)
+        $discCell.append($('<span class="rss-disc-amount"/>').text('−' + money(m.lineDiscount)))
+        $tr.append($discCell)
+      }
 
       $tr.append($('<td class="rss-num"/>').text(money(m.exTotal)))
 
@@ -512,33 +521,15 @@
   function placeOrder () {
     clearFeedback()
 
-    var first = $.trim($firstName.val())
-    var last = $.trim($lastName.val())
-    var email = $.trim($email.val())
-
-    if (!first || !last || !email) {
-      showFeedback(rssData.i18n.missingFields)
-      return
-    }
-
     if (!cart.length) {
       showFeedback(rssData.i18n.emptyCart)
       return
     }
 
-    // Spec: the guest warning is specifically for orders with no member number.
-    // An expired/inactive member (number present) already saw their own notice
-    // and the order is still attributed to their account.
-    var memberNumber = $.trim($memberNumber.val())
-    if (!memberNumber) {
-      if (!window.confirm(rssData.i18n.guestConfirm)) {
-        return
-      }
-    }
-
     var $btn = $('#rss-place-order')
-    $btn.prop('disabled', true).text(rssData.i18n.placing)
 
+    // Items carry no discount in marketing mode (the server ignores any sent),
+    // but the shared shape keeps the standard endpoint happy.
     var items = cart.map(function (r) {
       return {
         product_id: r.product_id,
@@ -548,17 +539,53 @@
       }
     })
 
-    $.post(rssData.ajaxUrl, {
-      action: 'rss_place_order',
-      nonce: rssData.nonce,
-      customer_first: first,
-      customer_last: last,
-      customer_email: email,
-      user_id: $userId.val(),
-      member_number: memberNumber,
-      order_notes: $('#rss-order-notes').val(),
-      items: JSON.stringify(items)
-    }).done(function (res) {
+    var payload
+
+    if (isMarketing) {
+      // Marketing order: no member, no customer fields — the server attributes
+      // it to the store marketing account and applies no discounts.
+      payload = {
+        action: 'rss_place_marketing_order',
+        nonce: rssData.nonce,
+        order_notes: $('#rss-order-notes').val(),
+        items: JSON.stringify(items)
+      }
+    } else {
+      var first = $.trim($firstName.val())
+      var last = $.trim($lastName.val())
+      var email = $.trim($email.val())
+
+      if (!first || !last || !email) {
+        showFeedback(rssData.i18n.missingFields)
+        return
+      }
+
+      // Spec: the guest warning is specifically for orders with no member number.
+      // An expired/inactive member (number present) already saw their own notice
+      // and the order is still attributed to their account.
+      var memberNumber = $.trim($memberNumber.val())
+      if (!memberNumber) {
+        if (!window.confirm(rssData.i18n.guestConfirm)) {
+          return
+        }
+      }
+
+      payload = {
+        action: 'rss_place_order',
+        nonce: rssData.nonce,
+        customer_first: first,
+        customer_last: last,
+        customer_email: email,
+        user_id: $userId.val(),
+        member_number: memberNumber,
+        order_notes: $('#rss-order-notes').val(),
+        items: JSON.stringify(items)
+      }
+    }
+
+    $btn.prop('disabled', true).text(rssData.i18n.placing)
+
+    $.post(rssData.ajaxUrl, payload).done(function (res) {
       if (!res.success) {
         showFeedback(res.data && res.data.message ? res.data.message : 'Could not place order.')
         $btn.prop('disabled', false).text('Place Order')

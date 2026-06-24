@@ -24,7 +24,8 @@
       "Bash(sed -i '' 's/ \\\\* Version: 0.1.3/ * Version: 0.1.4/' wp-content/plugins/realm-sales-system/realm-sales-system.php)",
       "Bash(php -l wp-content/plugins/realm-sales-system/includes/class-rss-ajax.php)",
       "Bash(sed -i '' 's/$version = '\\\\''0.1.4'\\\\'';/$version = '\\\\''0.1.5'\\\\'';/' wp-content/plugins/realm-sales-system/includes/class-rss-core.php)",
-      "Bash(sed -i '' 's/ \\\\* Version: 0.1.4/ * Version: 0.1.5/' wp-content/plugins/realm-sales-system/realm-sales-system.php)"
+      "Bash(sed -i '' 's/ \\\\* Version: 0.1.4/ * Version: 0.1.5/' wp-content/plugins/realm-sales-system/realm-sales-system.php)",
+      "Bash(php -l wp-content/themes/the-realm-malta/assets/views/admin/marketing/trm-marketing-landing-page.php)"
     ]
   }
 }

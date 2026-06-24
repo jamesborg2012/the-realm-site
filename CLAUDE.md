@@ -202,9 +202,10 @@ Order-fulfilment dashboard for GW orders.
 Backend order-placing module for in-store sales (alternative to WC's Add Order screen).
 
 - **Hard dependency on `realm-barcode-scanner`** — activation is blocked when it's missing, and the plugin self-deactivates (with an admin notice) if the scanner is later turned off. Barcode resolution reuses `RealmBarcodeScanner::resolve_product_fast()` / `resolve_product_slow_from_meta()`.
-- Classes: `RSS_Core` (singleton — top-level **"Sales System"** menu, cap `manage_woocommerce`, with a **New Order** submenu + asset enqueue) and `RSS_Ajax`.
-- Admin-only AJAX (nonce `rss_sales_system`, cap `manage_woocommerce`, no nopriv): `rss_verify_member` (member number → name/surname/email/user_id + store discount %, flags expired/inactive), `rss_lookup_barcode` (scan → product, captures live `get_price()`), `rss_place_order`.
+- Classes: `RSS_Core` (singleton — top-level **"Sales System"** menu, cap `manage_woocommerce`, with **New Order** + **New Marketing Order** submenus + asset enqueue) and `RSS_Ajax`.
+- Admin-only AJAX (nonce `rss_sales_system`, cap `manage_woocommerce`, no nopriv): `rss_verify_member` (member number → name/surname/email/user_id + store discount %, flags expired/inactive), `rss_lookup_barcode` (scan → product, captures live `get_price()`), `rss_place_order`, `rss_place_marketing_order`.
 - Order creation: member **store discount only** (`rmm_member_store_discount`) applied to all lines via per-line `total = subtotal × (1 − pct)` (no coupon); customer attributed to the resolved user id or guest; `set_customer_note()` for the details textarea; `calculate_totals(true)` then `update_status('completed')` + `set_date_paid()` → **completed + paid**, stock reduced once. Tags order meta `_rss_sales_system_order`, `_rss_member_number`.
+- **Marketing orders** (New Marketing Order page / `rss_place_marketing_order`): a mode-flagged reuse of the same view + JS with no member section, no customer fields and no discounts. Attributed to the `realm.marketing` user (or the first `marketing`-role user, else error); charged at full price; tagged `_rss_marketing_order` + `trm_is_marketing_order = 'yes'` so it stays inline with the theme's marketing-order logic and the order-tracker's `marketing`-role exclusion.
 - No custom DB tables.
 
 ---
