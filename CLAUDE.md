@@ -216,9 +216,11 @@ Backend order-placing module for in-store sales (alternative to WC's Add Order s
 
 - Admin page **WooCommerce → Cost Prices** (slug `trm-cost-price`, `manage_woocommerce`).
 - Two tabs: **Dashboard** (paginated 50/page, with SKU search) and **Upload** (CSV upload).
-- Custom table `{prefix}trm_product_cost_price` (`id`, `product_id`, `sku`, `cost_price DECIMAL(10,2)`, `uploaded_at`, `uploaded_by`). Schema versioned via `trm_cost_price_db_version` option.
+- Custom table `{prefix}trm_product_cost_price` (`id`, `product_id`, `sku`, `cost_price DECIMAL(10,2)`, `uploaded_at`, `uploaded_by`, `source` ['upload'|'inline']). Schema versioned via `trm_cost_price_db_version` option (currently `1.1`).
 - CSV format: `sku, cost_price` (header optional). Validation: rows whose cost price hasn't changed since the previous upload are reported as **unchanged** and skipped; bad rows go into a transient `trm_cp_upload_errors_{user_id}` for the next render.
 - **Append-only history** — every upload inserts a new row; "current" is `MAX(id)` per `product_id`. This is what powers profit analytics over time.
+- **Inline editing** (AJAX `trm_cost_price_inline_update`): each dashboard row's cost price is editable in place. An inline edit appends a new `source='inline'` row, EXCEPT when the latest row is itself an inline edit from within the last hour — then it overwrites that row so quick corrections don't churn history. CSV (`upload`) rows are never overwritten.
+- **WC product export:** current cost price (current only, no history) is added as a "Cost Price" column to WooCommerce's built-in product CSV exporter (`woocommerce_product_export_*` filters in `TRM_Cost_Price`).
 
 ### Profit Analytics (theme: `classes/profit-analytics/`)
 

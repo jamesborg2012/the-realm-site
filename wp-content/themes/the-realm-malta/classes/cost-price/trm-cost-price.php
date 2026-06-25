@@ -20,6 +20,14 @@ class TRM_Cost_Price extends TRM_Core
         add_action('admin_init',            [$this, 'maybe_install_db']);
         add_action('admin_menu',            [$this, 'register_submenu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
+
+        // Inline cost-price editing on the dashboard.
+        add_action('wp_ajax_trm_cost_price_inline_update', [$this, 'ajax_inline_update']);
+
+        // Expose the current cost price in the WooCommerce product CSV export.
+        add_filter('woocommerce_product_export_column_names',                  [$this, 'add_export_column']);
+        add_filter('woocommerce_product_export_product_default_columns',       [$this, 'add_export_column']);
+        add_filter('woocommerce_product_export_product_column_trm_cost_price', [$this, 'export_column_value'], 10, 3);
     }
 
     public function maybe_install_db(): void
@@ -58,6 +66,87 @@ class TRM_Cost_Price extends TRM_Core
             [],
             '1.0'
         );
+
+        wp_enqueue_script(
+            'trm-cost-price-admin',
+            get_stylesheet_directory_uri() . '/assets/js/admin/cost-price.js',
+            ['jquery'],
+            '1.0',
+            true
+        );
+
+        wp_localize_script('trm-cost-price-admin', 'trmCostPrice', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce'   => wp_create_nonce('trm_cost_price_inline'),
+        ]);
+    }
+
+    /**
+     * AJAX: persist an inline cost-price edit from the dashboard.
+     */
+    public function ajax_inline_update(): void
+    {
+        check_ajax_referer('trm_cost_price_inline', 'nonce');
+
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(['message' => 'You do not have permission to do this.'], 403);
+        }
+
+        $product_id = absint($_POST['product_id'] ?? 0);
+        $raw_price  = sanitize_text_field(wp_unslash($_POST['cost_price'] ?? ''));
+
+        if ($product_id <= 0) {
+            wp_send_json_error(['message' => 'Invalid product.']);
+        }
+
+        // Accept either a dot or comma decimal separator.
+        $normalised = str_replace(',', '.', $raw_price);
+        if ($normalised === '' || !is_numeric($normalised) || (float) $normalised < 0) {
+            wp_send_json_error(['message' => 'Please enter a valid cost price.']);
+        }
+        $cost_price = round((float) $normalised, 2);
+
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            wp_send_json_error(['message' => 'Product not found.']);
+        }
+
+        $sku = $product->get_sku();
+        if ($sku === '') {
+            $existing = TRM_Cost_Price_DB::get_current_price($product_id);
+            $sku      = $existing->sku ?? '';
+        }
+
+        $row = TRM_Cost_Price_DB::upsert_inline_price($product_id, $sku, $cost_price, get_current_user_id());
+
+        if (!$row) {
+            wp_send_json_error(['message' => 'Could not save the cost price. Please try again.']);
+        }
+
+        wp_send_json_success([
+            'cost_price' => number_format((float) $row->cost_price, 2),
+            'updated_at' => date_i18n('d M Y H:i', strtotime($row->uploaded_at)),
+        ]);
+    }
+
+    /**
+     * Add a "Cost Price" column to the WooCommerce product CSV exporter
+     * (both the available column list and the default selection).
+     */
+    public function add_export_column(array $columns): array
+    {
+        $columns['trm_cost_price'] = __('Cost Price', 'the-realm-malta');
+        return $columns;
+    }
+
+    /**
+     * Provide the current cost price for a product/variation in the export.
+     * Current value only — no history.
+     */
+    public function export_column_value($value, $product, $column_id)
+    {
+        $row = TRM_Cost_Price_DB::get_current_price((int) $product->get_id());
+        return $row ? wc_format_decimal($row->cost_price, 2) : '';
     }
 
     public function render_admin_page(): void

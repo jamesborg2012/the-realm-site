@@ -2,7 +2,7 @@
 
 class TRM_Cost_Price_DB
 {
-    const DB_VERSION = '1.0';
+    const DB_VERSION = '1.1';
 
     private static function table_name(): string
     {
@@ -24,6 +24,7 @@ class TRM_Cost_Price_DB
             cost_price   DECIMAL(10, 2)  NOT NULL,
             uploaded_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
             uploaded_by  BIGINT UNSIGNED NOT NULL,
+            source       VARCHAR(20)     NOT NULL DEFAULT 'upload',
             PRIMARY KEY  (id),
             KEY idx_product_id  (product_id),
             KEY idx_sku         (sku),
@@ -57,8 +58,9 @@ class TRM_Cost_Price_DB
                     'cost_price'  => $row['cost_price'],
                     'uploaded_at' => current_time('mysql'),
                     'uploaded_by' => $uploaded_by,
+                    'source'      => 'upload',
                 ],
-                ['%d', '%s', '%f', '%s', '%d']
+                ['%d', '%s', '%f', '%s', '%d', '%s']
             );
 
             if ($result !== false) {
@@ -67,6 +69,61 @@ class TRM_Cost_Price_DB
         }
 
         return $inserted;
+    }
+
+    /**
+     * Record an inline (dashboard) cost-price edit.
+     *
+     * Append-only like uploads, with one exception: consecutive inline edits made
+     * within the last hour are collapsed into a single record (the prior inline row
+     * is updated in place) so that quick corrections don't pollute the price history.
+     * A CSV-uploaded record is never overwritten — it always gets a fresh inline row.
+     *
+     * @return object|null The resulting current row for the product.
+     */
+    public static function upsert_inline_price(int $product_id, string $sku, float $cost_price, int $user_id): ?object
+    {
+        global $wpdb;
+
+        $table_name = self::table_name();
+        $now        = current_time('mysql');
+        $latest     = self::get_current_price($product_id);
+
+        // Collapse a prior inline edit from within the last hour into this one.
+        if (
+            $latest
+            && $latest->source === 'inline'
+            && (strtotime($now) - strtotime($latest->uploaded_at)) < HOUR_IN_SECONDS
+        ) {
+            $wpdb->update(
+                $table_name,
+                [
+                    'cost_price'  => $cost_price,
+                    'uploaded_at' => $now,
+                    'uploaded_by' => $user_id,
+                ],
+                ['id' => (int) $latest->id],
+                ['%f', '%s', '%d'],
+                ['%d']
+            );
+
+            return self::get_current_price($product_id);
+        }
+
+        $wpdb->insert(
+            $table_name,
+            [
+                'product_id'  => $product_id,
+                'sku'         => $sku,
+                'cost_price'  => $cost_price,
+                'uploaded_at' => $now,
+                'uploaded_by' => $user_id,
+                'source'      => 'inline',
+            ],
+            ['%d', '%s', '%f', '%s', '%d', '%s']
+        );
+
+        return self::get_current_price($product_id);
     }
 
     /**

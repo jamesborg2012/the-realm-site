@@ -62,6 +62,59 @@
     font-style: italic;
 }
 
+/* ── Inline cost-price editing ─────────────────────────────── */
+
+/* Explicit display rules below would otherwise override the [hidden] attribute. */
+.trm-cp-edit [hidden] {
+    display: none !important;
+}
+
+.trm-cp-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trm-cp-edit-btn {
+    font-size: 0.85em;
+    text-decoration: none;
+    color: #2271b1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.1s ease-in-out;
+}
+
+.trm-product-row:hover .trm-cp-edit-btn,
+.trm-cp-edit-btn:focus {
+    opacity: 1;
+}
+
+.trm-cp-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.trm-cp-form .trm-cp-input {
+    width: 80px;
+}
+
+.trm-cp-euro {
+    color: #555;
+}
+
+.trm-cp-spinner {
+    float: none;
+    margin: 0;
+}
+
+.trm-cp-error {
+    display: block;
+    margin-top: 4px;
+    color: #d63638;
+    font-size: 0.85em;
+}
+
 /* ── History <details> ─────────────────────────────────────── */
 
 .trm-history-details summary {

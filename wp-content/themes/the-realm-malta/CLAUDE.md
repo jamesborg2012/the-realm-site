@@ -149,11 +149,16 @@ sku          VARCHAR(191) (indexed)
 cost_price   DECIMAL(10,2)
 uploaded_at  DATETIME (indexed)
 uploaded_by  BIGINT UNSIGNED
+source       VARCHAR(20) DEFAULT 'upload'   -- 'upload' (CSV) | 'inline' (dashboard edit)
 ```
 
-Schema versioned via the `trm_cost_price_db_version` option. `maybe_install_db()` runs on `after_switch_theme` AND `admin_init`, so the table self-heals if missing.
+Schema versioned via the `trm_cost_price_db_version` option (currently `1.1`). `maybe_install_db()` runs on `after_switch_theme` AND `admin_init`, so the table self-heals / migrates (dbDelta adds the `source` column on existing installs) if missing or out of date.
 
-**Append-only.** "Current" cost price for a product = `MAX(id) WHERE product_id = ?`. This is the source of the history used by Profit Analytics.
+**Append-only** (mostly). "Current" cost price for a product = `MAX(id) WHERE product_id = ?`. This is the source of the history used by Profit Analytics.
+
+**Inline editing.** Each dashboard row's cost price is editable in place (AJAX `trm_cost_price_inline_update`, nonce `trm_cost_price_inline`, cap `manage_woocommerce`, handled by `TRM_Cost_Price::ajax_inline_update()` → `TRM_Cost_Price_DB::upsert_inline_price()`). Inline edits write `source = 'inline'`. **De-noising rule:** if the latest record is itself an `inline` edit made within the last hour, the edit overwrites that row in place (refreshing `cost_price`/`uploaded_at`) instead of appending — so rapid corrections don't create history churn. A CSV-uploaded (`upload`) record is never overwritten; the first inline edit after an upload always appends a new row. JS: [assets/js/admin/cost-price.js](assets/js/admin/cost-price.js).
+
+**WooCommerce product export.** The current cost price (current value only, no history) is exposed as a "Cost Price" column in WC's built-in product CSV exporter via `woocommerce_product_export_column_names` / `_product_default_columns` / `_product_column_trm_cost_price` (`TRM_Cost_Price::add_export_column()` / `export_column_value()`). Variations resolve by `variation_id`.
 
 **Upload (`admin-post.php?action=trm_cost_price_upload`):**
 - Nonce + `manage_woocommerce` cap.

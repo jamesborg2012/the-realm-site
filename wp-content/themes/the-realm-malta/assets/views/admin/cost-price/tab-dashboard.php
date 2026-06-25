@@ -123,10 +123,24 @@ $base_page_url  = admin_url('admin.php?page=trm-cost-price&tab=dashboard');
                     <code><?php echo esc_html($product->sku); ?></code>
                 </td>
                 <td class="column-cost-price">
-                    <strong>&euro;<?php echo esc_html(number_format((float) $product->cost_price, 2)); ?></strong>
+                    <div class="trm-cp-edit" data-product-id="<?php echo esc_attr($product_id); ?>">
+                        <span class="trm-cp-display">
+                            <strong>&euro;<span class="trm-cp-value"><?php echo esc_html(number_format((float) $product->cost_price, 2)); ?></span></strong>
+                            <button type="button" class="button-link trm-cp-edit-btn" title="Edit cost price">Edit</button>
+                        </span>
+                        <span class="trm-cp-form" hidden>
+                            <span class="trm-cp-euro">&euro;</span>
+                            <input type="number" step="0.01" min="0" inputmode="decimal" class="trm-cp-input small-text"
+                                   value="<?php echo esc_attr(number_format((float) $product->cost_price, 2, '.', '')); ?>">
+                            <button type="button" class="button button-small button-primary trm-cp-save">Save</button>
+                            <button type="button" class="button button-small trm-cp-cancel">Cancel</button>
+                            <span class="spinner trm-cp-spinner"></span>
+                        </span>
+                        <span class="trm-cp-error" hidden></span>
+                    </div>
                 </td>
                 <td class="column-updated">
-                    <?php echo esc_html(date_i18n('d M Y H:i', strtotime($product->uploaded_at))); ?>
+                    <span class="trm-cp-updated"><?php echo esc_html(date_i18n('d M Y H:i', strtotime($product->uploaded_at))); ?></span>
                 </td>
                 <td class="column-history">
                     <?php if ($history_count <= 1) : ?>
