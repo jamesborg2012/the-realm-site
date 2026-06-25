@@ -1,0 +1,28 @@
+@use "variables";
+
+/* Footer widget area tightening.
+ *
+ * Storefront defaults leave a lot of vertical air in the footer:
+ *   - .footer-widgets has padding-top: 4.235em, a big gap between the top of the (black) footer
+ *     bar and the column headings.
+ *   - Each heading (.widget-title, an <h3>) carries the default heading margin, and the menu/list
+ *     under it keeps the browser's default <ul> top margin — together an oversized gap under each
+ *     heading.
+ * Trim both. */
+
+.site-footer {
+  .footer-widgets {
+    padding-top: 1.5em;
+  }
+
+  .widget-title {
+    margin-bottom: 0.35em;
+  }
+
+  /* Kill the browser-default top margin on the list/menu sitting directly under each heading. */
+  .widget > ul,
+  .widget .menu,
+  .widget .textwidget {
+    margin-top: 0;
+  }
+}

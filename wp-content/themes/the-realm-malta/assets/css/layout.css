@@ -472,21 +472,21 @@ body a {
 }
 /* Two-bar site header.
  *
- *   Top bar    (#masthead > .col-full)              white  — logo (left) + contact info (right)
+ *   Top bar    (#masthead > .col-full)              black  — logo (left) + contact info (right), white text
  *   Lower bar  (.storefront-primary-navigation)     black  — mega menu + search + account + cart
  *
  * Layout is produced by re-homing Storefront header components by priority in TRM_Header_Hooks;
  * this file only handles the visual arrangement. ID selectors (#masthead) are used so we win over
  * Storefront's customizer-generated `.site-header { background-color }` rule without !important. */
 #masthead.site-header {
-  background: #fff;
+  background: #000;
   padding: 0;
   border-bottom: 0;
   /* -- Top bar: logo + contact ------------------------------------------- */
   /* -- Lower bar: menu + search + account + cart -------------------------- */
 }
 #masthead.site-header > .col-full {
-  background: #fff;
+  background: #000;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -498,17 +498,26 @@ body a {
 #masthead.site-header > .col-full .site-branding {
   margin: 0;
   padding: 0;
+  /* Storefront's base rule sets .site-branding { width: 73.9% }, which becomes this flex
+   * item's basis (flex: 0 0 auto) and pushes the contact block onto a second row. Override
+   * to size to the logo and never exceed a quarter of the bar. */
   flex: 0 0 auto;
+  width: auto;
+  max-width: 25%;
 }
 #masthead.site-header > .col-full .site-branding .custom-logo,
 #masthead.site-header > .col-full .site-branding img {
-  max-height: 64px;
+  max-height: 100px;
   width: auto;
   margin: 0;
 }
 #masthead.site-header > .col-full .site-branding .site-title,
 #masthead.site-header > .col-full .site-branding .site-description {
   margin: 0;
+  color: #fff;
+}
+#masthead.site-header > .col-full .site-branding .site-title a {
+  color: #fff;
 }
 #masthead.site-header > .col-full .skip-link {
   position: absolute;
@@ -523,8 +532,12 @@ body a {
   /* Items sitting directly on the black strip render white. The search pill keeps its own
    * dark-on-white treatment (re-asserted on .site-search below). */
   color: #fff;
-  /* Search sits between the menu and the account/cart icons, pushed right. The search pill (and
-   * its results dropdown) live on a white background, so restore dark text within it. */
+  /* Search sits right next to the All Categories button and grows to fill the space up to the
+   * account/cart cluster, which is pinned to the far right. The search pill (and its results
+   * dropdown) live on a white background, so restore dark text within it. */
+  /* Push the account + cart cluster to the right edge, leaving the search beside the button. */
+  /* The cart (.trm-cart) replaces Storefront's #site-header-cart and is styled in cart.scss
+   * as a red pill that opens the off-canvas cart drawer. It sits last in the right-hand cluster. */
 }
 #masthead.site-header .storefront-primary-navigation a {
   color: #fff;
@@ -539,15 +552,15 @@ body a {
   padding-top: 8px;
   padding-bottom: 8px;
 }
-#masthead.site-header .storefront-primary-navigation #site-navigation {
+#masthead.site-header .storefront-primary-navigation .trm-main-nav {
   margin: 0;
   flex: 0 1 auto;
   background: transparent;
 }
 #masthead.site-header .storefront-primary-navigation .site-search {
   flex: 1 1 320px;
-  max-width: 440px;
-  margin: 0 0 0 auto;
+  max-width: 560px;
+  margin: 0;
   padding: 0;
   color: #222;
 }
@@ -559,35 +572,7 @@ body a {
 }
 #masthead.site-header .storefront-primary-navigation .trm-header-account {
   flex: 0 0 auto;
-}
-#masthead.site-header .storefront-primary-navigation #site-header-cart {
-  flex: 0 0 auto;
-  width: auto;
-  margin: 0;
-  /* Keep the in-bar summary link tight to its content. The dropdown widget
-   * (.widget_shopping_cart, in the sibling <li>) is deliberately left untouched so it keeps
-   * its default width. */
-}
-#masthead.site-header .storefront-primary-navigation #site-header-cart > li {
-  width: auto;
-}
-#masthead.site-header .storefront-primary-navigation #site-header-cart .cart-contents {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: auto;
-  min-width: 0;
-  color: #fff;
-  /* Count text matches the rest of the bar — no pill background, just white text. */
-}
-#masthead.site-header .storefront-primary-navigation #site-header-cart .cart-contents:hover {
-  color: #c8102e;
-}
-#masthead.site-header .storefront-primary-navigation #site-header-cart .cart-contents .count {
-  background: none;
-  color: inherit;
-  padding: 0;
-  border: 0;
+  margin-left: auto;
 }
 
 /* -- Contact info block (top bar) ---------------------------------------- */
@@ -600,14 +585,14 @@ body a {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #000 !important;
+  color: #fff !important;
   text-decoration: none !important;
 }
 .trm-header-contact__item:hover {
   color: #c8102e !important;
 }
 .trm-header-contact__icon {
-  color: #000;
+  color: #c8102e;
   display: inline-flex;
   align-items: center;
 }
@@ -656,12 +641,17 @@ body a {
   #masthead.site-header > .col-full .trm-header-contact {
     margin-left: 0;
     width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
     gap: 16px;
   }
   #masthead.site-header .storefront-primary-navigation > .col-full {
     flex-wrap: wrap;
+    justify-content: center;
+    /* The horizontal main menu is desktop-only; on handheld the drawer + footer bar cover nav. */
+  }
+  #masthead.site-header .storefront-primary-navigation > .col-full .trm-main-menu {
+    display: none;
   }
   #masthead.site-header .storefront-primary-navigation > .col-full .site-search {
     order: 3;
@@ -669,22 +659,648 @@ body a {
     max-width: none;
     margin: 8px 0 0;
   }
+  /* Centre each contact item (icon + its stacked label/value) on handheld. */
+  .trm-header-contact__item {
+    justify-content: center;
+  }
+  .trm-header-contact__text {
+    align-items: center;
+    text-align: center;
+  }
   .trm-header-contact__label {
     font-size: 12px;
   }
 }
-#site-navigation .mega-menu-wrap #mega-menu-primary {
+/* On handheld, the account link and cart are already surfaced in Storefront's handheld footer
+ * bar, so drop the duplicates from the header's lower bar (767px and below). */
+@media screen and (max-width: 767px) {
+  #masthead.site-header .storefront-primary-navigation .trm-header-account,
+  #masthead.site-header .storefront-primary-navigation .trm-cart {
+    display: none;
+  }
+}
+/* Footer widget area tightening.
+ *
+ * Storefront defaults leave a lot of vertical air in the footer:
+ *   - .footer-widgets has padding-top: 4.235em, a big gap between the top of the (black) footer
+ *     bar and the column headings.
+ *   - Each heading (.widget-title, an <h3>) carries the default heading margin, and the menu/list
+ *     under it keeps the browser's default <ul> top margin — together an oversized gap under each
+ *     heading.
+ * Trim both. */
+.site-footer {
+  /* Kill the browser-default top margin on the list/menu sitting directly under each heading. */
+}
+.site-footer .footer-widgets {
+  padding-top: 1.5em;
+}
+.site-footer .widget-title {
+  margin-bottom: 0.35em;
+}
+.site-footer .widget > ul,
+.site-footer .widget .menu,
+.site-footer .widget .textwidget {
+  margin-top: 0;
+}
+
+/* Custom category off-canvas navigation (TRM_Mega_Nav).
+ *
+ *   Trigger pill  (.trm-nav-trigger)   sits in the lower black header bar.
+ *   Drawer        (.trm-nav-drawer)    slides in from the left, fixed over the page.
+ *   Main list     (.trm-nav-main)      vertical list of top-level categories.
+ *   Sub panes     (.trm-nav-sub)       one per main; desktop = right-hand fly-out column,
+ *                                      mobile  = slide-over panel with a Back button. */
+/* -- Trigger pill -------------------------------------------------------- */
+.trm-main-nav {
+  margin: 0;
   background: transparent;
 }
-#site-navigation .mega-menu-wrap #mega-menu-primary > li.mega-menu-item .mega-menu-link {
+
+.trm-nav-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #c8102e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.trm-nav-trigger:hover, .trm-nav-trigger:focus {
+  background: #a50d25;
   color: #fff;
 }
-#site-navigation .mega-menu-wrap #mega-menu-primary > li.mega-menu-megamenu > .mega-sub-menu {
-  border: 1px solid #000;
+.trm-nav-trigger__icon {
+  display: inline-flex;
 }
-#site-navigation .mega-menu-wrap #mega-menu-primary > li.mega-menu-megamenu .mega-sub-menu {
+.trm-nav-trigger__icon svg {
+  display: block;
+}
+
+/* -- Horizontal main menu (WordPress `trm_main_menu` location) ------------ */
+.trm-main-menu {
+  flex: 0 0 auto;
+}
+.trm-main-menu__list {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Second-level items appear as a hover dropdown on a dark card. */
+}
+.trm-main-menu__list li {
+  position: relative;
+  margin: 0;
+}
+.trm-main-menu__list a {
+  display: block;
+  padding: 8px 2px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.trm-main-menu__list a:hover {
+  color: #c8102e;
+}
+.trm-main-menu__list .current-menu-item > a,
+.trm-main-menu__list .current_page_item > a,
+.trm-main-menu__list .current-menu-ancestor > a {
+  color: #c8102e;
+}
+.trm-main-menu__list .sub-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  min-width: 210px;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  background: #000;
+  border-top: 2px solid #c8102e;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.trm-main-menu__list .sub-menu a {
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: none;
+  white-space: normal;
+}
+.trm-main-menu__list > li:hover > .sub-menu,
+.trm-main-menu__list > li:focus-within > .sub-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Lock page scroll while the drawer is open. */
+body.trm-nav-lock {
+  overflow: hidden;
+}
+
+/* -- Drawer shell -------------------------------------------------------- */
+.trm-nav-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 99990;
+  visibility: hidden;
+  pointer-events: none;
+}
+.trm-nav-drawer.is-open {
+  visibility: visible;
+  pointer-events: auto;
+}
+.trm-nav-drawer__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.trm-nav-drawer.is-open .trm-nav-drawer__overlay {
+  opacity: 1;
+}
+.trm-nav-drawer__panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 300px;
+  max-width: 86vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #fff;
   color: #000;
+  box-shadow: 2px 0 18px rgba(0, 0, 0, 0.25);
+  transform: translateX(-100%);
+  transition: transform 0.28s ease;
+}
+.trm-nav-drawer.is-open .trm-nav-drawer__panel {
+  transform: translateX(0);
+}
+.trm-nav-drawer__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  background: #000;
+  color: #fff;
+}
+.trm-nav-drawer__title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.trm-nav-drawer__close {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+.trm-nav-drawer__close:hover {
+  color: #c8102e;
+}
+.trm-nav-drawer__body {
+  position: relative;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+/* -- Main category list -------------------------------------------------- */
+.trm-nav-main {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+.trm-nav-main__item {
+  margin: 0;
+}
+.trm-nav-main__btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 18px;
+  border: 0;
+  border-bottom: 1px solid #ececec;
+  background: none;
+  color: #000;
+  font-size: 15px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.trm-nav-main__btn:hover, .trm-nav-main__btn.is-current {
+  background: #f6f6f6;
+  color: #c8102e;
+}
+.trm-nav-main__chevron {
+  color: #999;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* -- Sub-category panes -------------------------------------------------- */
+.trm-nav-sub {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: #fff;
+  transform: translateX(100%);
+  transition: transform 0.28s ease;
+  visibility: hidden;
+  /* On mobile the grandchild pane slides over the child pane. */
+}
+.trm-nav-sub.is-active {
+  transform: translateX(0);
+  visibility: visible;
+}
+.trm-nav-sub[data-trm-nav-level="3"] {
+  z-index: 2;
+}
+.trm-nav-sub__back {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 18px;
+  border: 0;
+  border-bottom: 1px solid #ececec;
+  background: #f6f6f6;
+  color: #000;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.trm-nav-sub__back:hover {
+  color: #c8102e;
+}
+.trm-nav-sub__head {
+  padding: 14px 18px 6px;
+}
+.trm-nav-sub__title {
+  margin: 0;
+  font-size: 16px;
+}
+.trm-nav-sub__viewall {
+  display: inline-block;
+  margin-top: 4px;
+  color: #c8102e;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.trm-nav-sub__viewall:hover {
+  text-decoration: underline;
+}
+.trm-nav-sub__list {
+  margin: 0;
+  padding: 6px 0 16px;
+  list-style: none;
+  /* Child rows that open a grandchild pane push their chevron out to the right edge,
+   * matching the main category rows. Nested here so it beats the shared `display: block`. */
+}
+.trm-nav-sub__list li {
+  margin: 0;
+}
+.trm-nav-sub__list .trm-nav-sub__link,
+.trm-nav-sub__list .trm-nav-sub__btn {
+  display: block;
+  width: 100%;
+  padding: 10px 18px;
+  border: 0;
+  background: none;
+  color: #000;
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.trm-nav-sub__list .trm-nav-sub__link:hover, .trm-nav-sub__list .trm-nav-sub__link.is-current,
+.trm-nav-sub__list .trm-nav-sub__btn:hover,
+.trm-nav-sub__list .trm-nav-sub__btn.is-current {
+  background: #f6f6f6;
+  color: #c8102e;
+}
+.trm-nav-sub__list .trm-nav-sub__btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.trm-nav-sub__chevron {
+  color: #999;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* -- Desktop: side-by-side fly-out columns (no slide-over) ---------------- */
+@media screen and (min-width: 769px) {
+  /* Panel widens to fit only the columns currently in play (set by JS via has-l2/has-l3). */
+  .trm-nav-drawer__panel {
+    width: 300px;
+    max-width: 94vw;
+    transition: width 0.2s ease, transform 0.28s ease;
+  }
+  .trm-nav-drawer.has-l2 .trm-nav-drawer__panel {
+    width: 620px;
+  }
+  .trm-nav-drawer.has-l3 .trm-nav-drawer__panel {
+    width: 940px;
+  }
+  .trm-nav-main {
+    width: 300px;
+    border-right: 1px solid #ececec;
+  }
+  .trm-nav-sub {
+    width: 320px;
+    transform: none;
+    transition: opacity 0.15s ease;
+    opacity: 0;
+    visibility: hidden;
+  }
+  .trm-nav-sub.is-active {
+    opacity: 1;
+    visibility: visible;
+  }
+  .trm-nav-sub[data-trm-nav-level="2"] {
+    left: 300px;
+  }
+  .trm-nav-sub[data-trm-nav-level="3"] {
+    left: 620px;
+    border-left: 1px solid #ececec;
+  }
+  .trm-nav-sub__back {
+    display: none;
+  }
+}
+/* Cart trigger pill + off-canvas cart drawer (TRM_Cart). */
+/* -- Trigger pill -------------------------------------------------------- */
+.trm-cart {
+  flex: 0 0 auto;
+}
+
+.trm-cart-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 18px 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #c8102e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.trm-cart-trigger:hover, .trm-cart-trigger:focus {
+  background: #a50d25;
+  color: #fff;
+}
+.trm-cart-trigger__icon {
+  position: relative;
+  display: inline-flex;
+}
+.trm-cart-trigger__icon svg {
+  display: block;
+}
+.trm-cart-trigger__count {
+  position: absolute;
+  top: -7px;
+  right: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #fff;
+  color: #c8102e;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.trm-cart-trigger__total {
+  white-space: nowrap;
+}
+.trm-cart-trigger__total .woocommerce-Price-amount {
+  font-weight: 700;
+}
+
+/* -- Drawer -------------------------------------------------------------- */
+body.trm-cart-lock {
+  overflow: hidden;
+}
+
+.trm-cart-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 99995;
+  visibility: hidden;
+  pointer-events: none;
+}
+.trm-cart-drawer.is-open {
+  visibility: visible;
+  pointer-events: auto;
+}
+.trm-cart-drawer__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.trm-cart-drawer.is-open .trm-cart-drawer__overlay {
+  opacity: 1;
+}
+.trm-cart-drawer__panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 380px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #222;
+  box-shadow: -2px 0 18px rgba(0, 0, 0, 0.25);
+  transform: translateX(100%);
+  transition: transform 0.28s ease;
+}
+.trm-cart-drawer.is-open .trm-cart-drawer__panel {
+  transform: translateX(0);
+}
+.trm-cart-drawer__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #ececec;
+}
+.trm-cart-drawer__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+.trm-cart-drawer__close {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #333;
+  font-size: 15px;
+  cursor: pointer;
+}
+.trm-cart-drawer__close:hover {
+  color: #c8102e;
+}
+.trm-cart-drawer__close-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.trm-cart-drawer__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+}
+
+/* -- WooCommerce mini-cart inside the drawer ----------------------------- */
+.trm-cart-drawer__body .woocommerce-mini-cart {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 0 14px 26px;
+  border-bottom: 1px solid #ececec;
+  font-size: 14px;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart-item img {
+  width: 50px;
+  height: auto;
+  margin: 0;
+  order: -1;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart-item a:not(.remove) {
+  color: #1a1a1a;
+  text-decoration: none;
+  font-weight: 600;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart-item a:not(.remove):hover {
+  color: #c8102e;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart-item a.remove {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  color: #aaa;
+  font-size: 18px;
+  line-height: 1;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart-item a.remove:hover {
+  color: #c8102e;
+  background: none;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart-item .quantity {
+  display: block;
+  margin-top: 2px;
+  color: #666;
+  font-size: 13px;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0;
+  padding-top: 16px;
+  border-top: 2px solid #ececec;
+  font-size: 16px;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  /* Make the primary checkout action the brand red. */
+}
+.trm-cart-drawer__body .woocommerce-mini-cart__buttons .button {
+  margin: 0;
+  text-align: center;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart__buttons .checkout {
+  background: #c8102e;
+  color: #fff;
+}
+.trm-cart-drawer__body .woocommerce-mini-cart__buttons .checkout:hover {
+  background: #a50d25;
+  color: #fff;
+}
+
+/* -- Empty state (theme mini-cart override) ------------------------------ */
+.trm-mini-cart-empty {
+  padding: 48px 16px;
+  text-align: center;
+}
+.trm-mini-cart-empty__icon {
+  color: #d8d8d8;
+}
+.trm-mini-cart-empty__icon svg {
+  display: inline-block;
+}
+.trm-mini-cart-empty .woocommerce-mini-cart__empty-message {
+  margin: 16px 0 20px;
+  color: #333;
+  font-weight: 700;
+}
+.trm-mini-cart-empty__btn {
+  background: #c8102e;
+  color: #fff;
+}
+.trm-mini-cart-empty__btn:hover {
+  background: #a50d25;
+  color: #fff;
 }
 
 .woocommerce-shop #main .products .product img,

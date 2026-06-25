@@ -2,7 +2,7 @@
 
 /* Two-bar site header.
  *
- *   Top bar    (#masthead > .col-full)              white  — logo (left) + contact info (right)
+ *   Top bar    (#masthead > .col-full)              black  — logo (left) + contact info (right), white text
  *   Lower bar  (.storefront-primary-navigation)     black  — mega menu + search + account + cart
  *
  * Layout is produced by re-homing Storefront header components by priority in TRM_Header_Hooks;
@@ -14,13 +14,13 @@ $trm-header-black: #000;
 $trm-header-accent: #c8102e; // Realm red — used for the contact icons + hover.
 
 #masthead.site-header {
-  background: $trm-header-white;
+  background: $trm-header-black;
   padding: 0;
   border-bottom: 0;
 
   /* -- Top bar: logo + contact ------------------------------------------- */
   > .col-full {
-    background: $trm-header-white;
+    background: $trm-header-black;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -31,11 +31,16 @@ $trm-header-accent: #c8102e; // Realm red — used for the contact icons + hover
     .site-branding {
       margin: 0;
       padding: 0;
+      /* Storefront's base rule sets .site-branding { width: 73.9% }, which becomes this flex
+       * item's basis (flex: 0 0 auto) and pushes the contact block onto a second row. Override
+       * to size to the logo and never exceed a quarter of the bar. */
       flex: 0 0 auto;
+      width: auto;
+      max-width: 25%;
 
       .custom-logo,
       img {
-        max-height: 64px;
+        max-height: 100px;
         width: auto;
         margin: 0;
       }
@@ -43,6 +48,11 @@ $trm-header-accent: #c8102e; // Realm red — used for the contact icons + hover
       .site-title,
       .site-description {
         margin: 0;
+        color: $trm-header-white;
+      }
+
+      .site-title a {
+        color: $trm-header-white;
       }
     }
 
@@ -82,18 +92,19 @@ $trm-header-accent: #c8102e; // Realm red — used for the contact icons + hover
       padding-bottom: 8px;
     }
 
-    #site-navigation {
+    .trm-main-nav {
       margin: 0;
       flex: 0 1 auto;
       background: transparent;
     }
 
-    /* Search sits between the menu and the account/cart icons, pushed right. The search pill (and
-     * its results dropdown) live on a white background, so restore dark text within it. */
+    /* Search sits right next to the All Categories button and grows to fill the space up to the
+     * account/cart cluster, which is pinned to the far right. The search pill (and its results
+     * dropdown) live on a white background, so restore dark text within it. */
     .site-search {
       flex: 1 1 320px;
-      max-width: 440px;
-      margin: 0 0 0 auto;
+      max-width: 560px;
+      margin: 0;
       padding: 0;
       color: #222;
 
@@ -106,43 +117,14 @@ $trm-header-accent: #c8102e; // Realm red — used for the contact icons + hover
       }
     }
 
+    /* Push the account + cart cluster to the right edge, leaving the search beside the button. */
     .trm-header-account {
       flex: 0 0 auto;
+      margin-left: auto;
     }
 
-    #site-header-cart {
-      flex: 0 0 auto;
-      width: auto;
-      margin: 0;
-
-      /* Keep the in-bar summary link tight to its content. The dropdown widget
-       * (.widget_shopping_cart, in the sibling <li>) is deliberately left untouched so it keeps
-       * its default width. */
-      > li {
-        width: auto;
-      }
-
-      .cart-contents {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        width: auto;
-        min-width: 0;
-        color: $trm-header-white;
-
-        &:hover {
-          color: $trm-header-accent;
-        }
-
-        /* Count text matches the rest of the bar — no pill background, just white text. */
-        .count {
-          background: none;
-          color: inherit;
-          padding: 0;
-          border: 0;
-        }
-      }
-    }
+    /* The cart (.trm-cart) replaces Storefront's #site-header-cart and is styled in cart.scss
+     * as a red pill that opens the off-canvas cart drawer. It sits last in the right-hand cluster. */
   }
 }
 
@@ -156,7 +138,7 @@ $trm-header-accent: #c8102e; // Realm red — used for the contact icons + hover
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #000 !important;
+    color: $trm-header-white !important;
     text-decoration: none !important;
 
     &:hover {
@@ -165,7 +147,7 @@ $trm-header-accent: #c8102e; // Realm red — used for the contact icons + hover
   }
 
   &__icon {
-    color: #000;
+    color: $trm-header-accent;
     display: inline-flex;
     align-items: center;
 
@@ -225,14 +207,20 @@ $trm-header-accent: #c8102e; // Realm red — used for the contact icons + hover
       .trm-header-contact {
         margin-left: 0;
         width: 100%;
-        justify-content: center;
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: center;
         gap: 16px;
       }
     }
 
     .storefront-primary-navigation > .col-full {
       flex-wrap: wrap;
+      justify-content: center;
+
+      /* The horizontal main menu is desktop-only; on handheld the drawer + footer bar cover nav. */
+      .trm-main-menu {
+        display: none;
+      }
 
       .site-search {
         order: 3;
@@ -243,7 +231,28 @@ $trm-header-accent: #c8102e; // Realm red — used for the contact icons + hover
     }
   }
 
+  /* Centre each contact item (icon + its stacked label/value) on handheld. */
+  .trm-header-contact__item {
+    justify-content: center;
+  }
+
+  .trm-header-contact__text {
+    align-items: center;
+    text-align: center;
+  }
+
   .trm-header-contact__label {
     font-size: 12px;
+  }
+}
+
+/* On handheld, the account link and cart are already surfaced in Storefront's handheld footer
+ * bar, so drop the duplicates from the header's lower bar (767px and below). */
+@media screen and (max-width: 767px) {
+  #masthead.site-header .storefront-primary-navigation {
+    .trm-header-account,
+    .trm-cart {
+      display: none;
+    }
   }
 }

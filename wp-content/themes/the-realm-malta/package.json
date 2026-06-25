@@ -1,8 +1,6 @@
 {
-  "dependencies": {
-    "-": "^0.0.1",
-    "sass": "^1.85.0",
-    "save-dev": "^0.0.1-security"
+  "devDependencies": {
+    "sass": "^1.85.0"
   },
   "scripts": {
     "compile:sass": "sass assets/scss/styles.scss assets/css/layout.css",
