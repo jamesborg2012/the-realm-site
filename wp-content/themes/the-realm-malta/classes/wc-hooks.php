@@ -968,8 +968,16 @@ class TRM_WC_Hooks extends TRM_Core
             ],
             [
                 'title'    => __('Revolut Number', 'the-realm-malta'),
-                'desc'     => __('Mobile number customers should send Revolut payments to (e.g. +356 79xx xxxx). When set, the Cash on Delivery description at checkout shows "Payment may be made out to {number}" beneath the existing description. Leave empty to keep the existing description only.', 'the-realm-malta'),
+                'desc'     => __('Mobile number customers should send Revolut payments to (e.g. +356 79xx xxxx). When set, the Cash on Delivery description at checkout lists "Revolut: {number}". Leave empty to omit it.', 'the-realm-malta'),
                 'id'       => 'trm_revolut_number',
+                'type'     => 'text',
+                'default'  => '',
+                'desc_tip' => false,
+            ],
+            [
+                'title'    => __('BOV Mobile Payment', 'the-realm-malta'),
+                'desc'     => __('Mobile number customers should send BOV Mobile Pay payments to (e.g. +356 79xx xxxx). When set, the Cash on Delivery description at checkout lists "BOV Mobile Pay: {number}". Leave empty to omit it.', 'the-realm-malta'),
+                'id'       => 'trm_bov_number',
                 'type'     => 'text',
                 'default'  => '',
                 'desc_tip' => false,
@@ -984,11 +992,14 @@ class TRM_WC_Hooks extends TRM_Core
     }
 
     /**
-     * Append "Payment may be made out to {revolut number}" to the Cash on Delivery description
-     * at checkout when `trm_revolut_number` is set under WC → Settings → General.
+     * Append a list of accepted mobile-payment numbers (Revolut, BOV Mobile Pay) to the Cash on
+     * Delivery description at checkout, reading the options set under WC → Settings → General.
+     *
+     * Each configured number is rendered as a labelled list item; numbers left empty in settings
+     * are skipped. If none are set, the description is returned unchanged.
      *
      * The incoming $description has already been run through wptexturize + wpautop by WC, so we
-     * append a new `<p>` rather than mutating the existing block.
+     * append a new block rather than mutating the existing one.
      *
      * Hook: woocommerce_gateway_description (priority 10)
      *
@@ -1002,20 +1013,27 @@ class TRM_WC_Hooks extends TRM_Core
             return $description;
         }
 
-        $revolut_number = get_option('trm_revolut_number', '');
-        $revolut_number = is_string($revolut_number) ? trim($revolut_number) : '';
+        $methods = [
+            __('Revolut', 'the-realm-malta')      => get_option('trm_revolut_number', ''),
+            __('BOV Mobile Pay', 'the-realm-malta') => get_option('trm_bov_number', ''),
+        ];
 
-        if ($revolut_number === '') {
+        $items = '';
+        foreach ($methods as $label => $number) {
+            $number = is_string($number) ? trim($number) : '';
+            if ($number === '') {
+                continue;
+            }
+            $items .= '<li style="list-style:none;margin:0;">' . esc_html($label) . ': ' . esc_html($number) . '</li>';
+        }
+
+        if ($items === '') {
             return $description;
         }
 
-        $message = sprintf(
-            /* translators: %s: store's Revolut mobile number */
-            __('Payment may be made out to %s', 'the-realm-malta'),
-            esc_html($revolut_number)
-        );
+        $intro = esc_html__('Payment may be made out to:', 'the-realm-malta');
 
-        return $description . '<p>' . $message . '</p>';
+        return $description . '<p>' . $intro . '</p><ul style="list-style:none;margin:0;padding:0;">' . $items . '</ul>';
     }
 
     public function handle_live_search()
