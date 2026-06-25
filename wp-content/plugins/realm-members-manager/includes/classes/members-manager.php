@@ -10,6 +10,8 @@ class Members_Manager extends Realm_Members_Manager_Core
     {
         add_action('admin_menu', [$this, 'register_members_menu']);
 
+        add_action('admin_post_rmm_export_members', [$this, 'export_members_csv']);
+
         add_action('show_user_profile', array($this, 'add_members_meta_fields'));
         add_action('edit_user_profile', array($this, 'add_members_meta_fields'));
 
@@ -63,6 +65,21 @@ class Members_Manager extends Realm_Members_Manager_Core
      */
     public function render_realm_members_page()
     {
+        echo $this->render_template(
+            'admin/members-manager-landing-page',
+            [
+                'users_data' => $this->get_members_data()
+            ]
+        );
+    }
+
+    /**
+     * Gathers all customer/member records used by the members page and the CSV export.
+     *
+     * @return array
+     */
+    private function get_members_data(): array
+    {
         $site_users = get_users([
             'role' => 'customer',
             'orderby' => 'user_registered',
@@ -83,11 +100,11 @@ class Members_Manager extends Realm_Members_Manager_Core
             if ($member_number != '' && $member_status == 'active' && strtotime($expires_at) > strtotime('now')) {
                 $is_member_flag = true;
             }
-            
+
             if($member_status == '') {
                 $member_status = 'not_active';
             }
-            
+
             $current_status = 'Not a Member';
             if($member_status == 'active') {
                 $current_status = 'Member';
@@ -108,12 +125,55 @@ class Members_Manager extends Realm_Members_Manager_Core
             ];
         }
 
-        echo $this->render_template(
-            'admin/members-manager-landing-page',
-            [
-                'users_data' => $users_data
-            ]
-        );
+        return $users_data;
+    }
+
+    /**
+     * Streams a CSV of all members as a file download.
+     */
+    public function export_members_csv()
+    {
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(__('You do not have permission to export members.'));
+        }
+
+        check_admin_referer('rmm_export_members');
+
+        $users_data = $this->get_members_data();
+
+        $filename = 'realm-members-' . date('Y-m-d') . '.csv';
+
+        nocache_headers();
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        $output = fopen('php://output', 'w');
+
+        // UTF-8 BOM so Excel reads accented characters correctly.
+        fwrite($output, "\xEF\xBB\xBF");
+
+        fputcsv($output, [
+            'Name & Surname',
+            'Email',
+            'Mobile Number',
+            'Member Number',
+            'Status',
+            'Membership Expires'
+        ]);
+
+        foreach ($users_data as $user) {
+            fputcsv($output, [
+                trim($user['name']),
+                $user['email'],
+                $user['phone'],
+                $user['member_number'] === 'N/A' ? '' : $user['member_number'],
+                $user['is_member'],
+                $user['expires_at'] === 'N/A' ? '' : $user['expires_at']
+            ]);
+        }
+
+        fclose($output);
+        exit;
     }
 
     public function add_members_meta_fields($user)

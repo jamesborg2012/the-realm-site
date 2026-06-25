@@ -15,6 +15,7 @@
 
     <div class="container create-member-container">
         <button class="show-new-member-modal button button-primary" type="button">Create New Member</button>
+        <a class="button button-secondary rmm-export-members-btn" href="<?= esc_url(wp_nonce_url(admin_url('admin-post.php?action=rmm_export_members'), 'rmm_export_members')) ?>">Export</a>
     </div>
 
     <div class='users-container container'>
