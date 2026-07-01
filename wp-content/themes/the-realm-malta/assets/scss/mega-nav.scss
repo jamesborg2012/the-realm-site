@@ -227,30 +227,53 @@ body.trm-nav-lock {
   list-style: none;
   overflow-y: auto;
 
+  /* Row = a link (navigates to the category archive) + an optional chevron toggle (opens the
+   * child pane). Leaf rows are just the link, spanning the full width. */
   &__item {
+    display: flex;
+    align-items: stretch;
     margin: 0;
+    border-bottom: 1px solid $trm-nav-line;
+
+    &.is-current {
+      background: $trm-nav-hover-bg;
+    }
   }
 
-  &__btn {
+  &__link {
+    flex: 1 1 auto;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    width: 100%;
+    min-width: 0;
     padding: 14px 18px;
-    border: 0;
-    border-bottom: 1px solid $trm-nav-line;
-    background: none;
     color: $trm-nav-black;
     font-size: 15px;
     text-align: left;
     text-decoration: none;
     cursor: pointer;
 
-    &:hover,
-    &.is-current {
-      background: $trm-nav-hover-bg;
+    &:hover {
       color: $trm-nav-red;
+    }
+  }
+
+  &__item.is-current &__link {
+    color: $trm-nav-red;
+  }
+
+  &__toggle {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    border: 0;
+    border-left: 1px solid $trm-nav-line;
+    background: none;
+    cursor: pointer;
+
+    &:hover {
+      background: $trm-nav-hover-bg;
     }
   }
 
@@ -258,6 +281,11 @@ body.trm-nav-lock {
     color: #999;
     font-size: 18px;
     line-height: 1;
+  }
+
+  &__item:hover &__chevron,
+  &__item.is-current &__chevron {
+    color: $trm-nav-red;
   }
 }
 
@@ -314,15 +342,13 @@ body.trm-nav-lock {
     font-size: 16px;
   }
 
-  &__viewall {
-    display: inline-block;
-    margin-top: 4px;
-    color: $trm-nav-red;
-    font-size: 13px;
-    font-weight: 600;
+  /* The pane heading itself links to the parent category's archive (replaces "View all"). */
+  &__title-link {
+    color: $trm-nav-black;
     text-decoration: none;
 
     &:hover {
+      color: $trm-nav-red;
       text-decoration: underline;
     }
   }
@@ -336,8 +362,7 @@ body.trm-nav-lock {
       margin: 0;
     }
 
-    .trm-nav-sub__link,
-    .trm-nav-sub__btn {
+    .trm-nav-sub__link {
       display: block;
       width: 100%;
       padding: 10px 18px;
@@ -349,20 +374,46 @@ body.trm-nav-lock {
       text-decoration: none;
       cursor: pointer;
 
-      &:hover,
-      &.is-current {
+      &:hover {
         background: $trm-nav-hover-bg;
         color: $trm-nav-red;
       }
     }
+  }
 
-    /* Child rows that open a grandchild pane push their chevron out to the right edge,
-     * matching the main category rows. Nested here so it beats the shared `display: block`. */
-    .trm-nav-sub__btn {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
+  /* Child rows that open a grandchild pane: a link + a chevron toggle, like the main list. */
+  &__item {
+    display: flex;
+    align-items: stretch;
+
+    &.is-current {
+      background: $trm-nav-hover-bg;
+    }
+
+    .trm-nav-sub__link {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 0;
+    }
+
+    &.is-current .trm-nav-sub__link {
+      color: $trm-nav-red;
+    }
+  }
+
+  &__toggle {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    border: 0;
+    border-left: 1px solid $trm-nav-line;
+    background: none;
+    cursor: pointer;
+
+    &:hover {
+      background: $trm-nav-hover-bg;
     }
   }
 
@@ -370,6 +421,11 @@ body.trm-nav-lock {
     color: #999;
     font-size: 18px;
     line-height: 1;
+  }
+
+  &__item:hover &__chevron,
+  &__item.is-current &__chevron {
+    color: $trm-nav-red;
   }
 }
 

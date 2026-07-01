@@ -23,6 +23,7 @@
 
     var triggers = document.querySelectorAll('[data-trm-nav-trigger]');
     var openBtns = drawer.querySelectorAll('[data-trm-nav-open]');
+    var hoverEls = drawer.querySelectorAll('[data-trm-nav-hover]');
     var clearEls = drawer.querySelectorAll('[data-trm-nav-clear]');
     var panes = drawer.querySelectorAll('[data-trm-nav-pane]');
     var closeEls = drawer.querySelectorAll('[data-trm-nav-close]');
@@ -52,8 +53,11 @@
         for (var j = 0; j < openBtns.length; j++) {
             var target = paneForId(openBtns[j].getAttribute('data-trm-nav-open'));
             if (target && paneLevel(target) >= level) {
-                openBtns[j].classList.remove('is-current');
                 openBtns[j].setAttribute('aria-expanded', 'false');
+                var jrow = openBtns[j].closest('[data-trm-nav-hover]');
+                if (jrow) {
+                    jrow.classList.remove('is-current');
+                }
             }
         }
         syncLevelClasses();
@@ -87,8 +91,11 @@
 
         var btn = drawer.querySelector('[data-trm-nav-open="' + id + '"]');
         if (btn) {
-            btn.classList.add('is-current');
             btn.setAttribute('aria-expanded', 'true');
+            var row = btn.closest('[data-trm-nav-hover]');
+            if (row) {
+                row.classList.add('is-current');
+            }
         }
         syncLevelClasses();
     }
@@ -143,18 +150,28 @@
         });
     }
 
+    // Chevron toggle: click opens the pane (primary tap target on mobile).
     for (var m = 0; m < openBtns.length; m++) {
         (function (btn) {
             var id = btn.getAttribute('data-trm-nav-open');
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', function (e) {
+                // The label <a> sits beside this button; don't let the click bubble/navigate.
+                e.preventDefault();
                 openPane(id);
             });
-            btn.addEventListener('mouseenter', function () {
+        })(openBtns[m]);
+    }
+
+    // Desktop hover opens the pane for the whole row, so the label link stays free to navigate.
+    for (var h = 0; h < hoverEls.length; h++) {
+        (function (row) {
+            var id = row.getAttribute('data-trm-nav-hover');
+            row.addEventListener('mouseenter', function () {
                 if (isDesktop()) {
                     openPane(id);
                 }
             });
-        })(openBtns[m]);
+        })(hoverEls[h]);
     }
 
     // Hovering a childless item on desktop collapses the columns it would otherwise leave stale.

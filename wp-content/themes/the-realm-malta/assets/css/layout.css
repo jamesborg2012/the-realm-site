@@ -895,34 +895,57 @@ body.trm-nav-lock {
   padding: 0;
   list-style: none;
   overflow-y: auto;
+  /* Row = a link (navigates to the category archive) + an optional chevron toggle (opens the
+   * child pane). Leaf rows are just the link, spanning the full width. */
 }
 .trm-nav-main__item {
+  display: flex;
+  align-items: stretch;
   margin: 0;
+  border-bottom: 1px solid #ececec;
 }
-.trm-nav-main__btn {
+.trm-nav-main__item.is-current {
+  background: #f6f6f6;
+}
+.trm-nav-main__link {
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
+  min-width: 0;
   padding: 14px 18px;
-  border: 0;
-  border-bottom: 1px solid #ececec;
-  background: none;
   color: #000;
   font-size: 15px;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
 }
-.trm-nav-main__btn:hover, .trm-nav-main__btn.is-current {
-  background: #f6f6f6;
+.trm-nav-main__link:hover {
   color: #c8102e;
+}
+.trm-nav-main__item.is-current .trm-nav-main__link {
+  color: #c8102e;
+}
+.trm-nav-main__toggle {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  border: 0;
+  border-left: 1px solid #ececec;
+  background: none;
+  cursor: pointer;
+}
+.trm-nav-main__toggle:hover {
+  background: #f6f6f6;
 }
 .trm-nav-main__chevron {
   color: #999;
   font-size: 18px;
   line-height: 1;
+}
+.trm-nav-main__item:hover .trm-nav-main__chevron, .trm-nav-main__item.is-current .trm-nav-main__chevron {
+  color: #c8102e;
 }
 
 /* -- Sub-category panes -------------------------------------------------- */
@@ -940,6 +963,8 @@ body.trm-nav-lock {
   transition: transform 0.28s ease;
   visibility: hidden;
   /* On mobile the grandchild pane slides over the child pane. */
+  /* The pane heading itself links to the parent category's archive (replaces "View all"). */
+  /* Child rows that open a grandchild pane: a link + a chevron toggle, like the main list. */
 }
 .trm-nav-sub.is-active {
   transform: translateX(0);
@@ -972,29 +997,23 @@ body.trm-nav-lock {
   margin: 0;
   font-size: 16px;
 }
-.trm-nav-sub__viewall {
-  display: inline-block;
-  margin-top: 4px;
-  color: #c8102e;
-  font-size: 13px;
-  font-weight: 600;
+.trm-nav-sub__title-link {
+  color: #000;
   text-decoration: none;
 }
-.trm-nav-sub__viewall:hover {
+.trm-nav-sub__title-link:hover {
+  color: #c8102e;
   text-decoration: underline;
 }
 .trm-nav-sub__list {
   margin: 0;
   padding: 6px 0 16px;
   list-style: none;
-  /* Child rows that open a grandchild pane push their chevron out to the right edge,
-   * matching the main category rows. Nested here so it beats the shared `display: block`. */
 }
 .trm-nav-sub__list li {
   margin: 0;
 }
-.trm-nav-sub__list .trm-nav-sub__link,
-.trm-nav-sub__list .trm-nav-sub__btn {
+.trm-nav-sub__list .trm-nav-sub__link {
   display: block;
   width: 100%;
   padding: 10px 18px;
@@ -1006,22 +1025,46 @@ body.trm-nav-lock {
   text-decoration: none;
   cursor: pointer;
 }
-.trm-nav-sub__list .trm-nav-sub__link:hover, .trm-nav-sub__list .trm-nav-sub__link.is-current,
-.trm-nav-sub__list .trm-nav-sub__btn:hover,
-.trm-nav-sub__list .trm-nav-sub__btn.is-current {
+.trm-nav-sub__list .trm-nav-sub__link:hover {
   background: #f6f6f6;
   color: #c8102e;
 }
-.trm-nav-sub__list .trm-nav-sub__btn {
+.trm-nav-sub__item {
+  display: flex;
+  align-items: stretch;
+}
+.trm-nav-sub__item.is-current {
+  background: #f6f6f6;
+}
+.trm-nav-sub__item .trm-nav-sub__link {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+.trm-nav-sub__item.is-current .trm-nav-sub__link {
+  color: #c8102e;
+}
+.trm-nav-sub__toggle {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: center;
+  width: 48px;
+  border: 0;
+  border-left: 1px solid #ececec;
+  background: none;
+  cursor: pointer;
+}
+.trm-nav-sub__toggle:hover {
+  background: #f6f6f6;
 }
 .trm-nav-sub__chevron {
   color: #999;
   font-size: 18px;
   line-height: 1;
+}
+.trm-nav-sub__item:hover .trm-nav-sub__chevron, .trm-nav-sub__item.is-current .trm-nav-sub__chevron {
+  color: #c8102e;
 }
 
 /* -- Desktop: side-by-side fly-out columns (no slide-over) ---------------- */

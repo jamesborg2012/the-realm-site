@@ -9,10 +9,11 @@
  * the WooCommerce `product_cat` hierarchy:
  *
  *   - Main categories (parent = 0) list vertically.
- *   - Clicking a main reveals its immediate sub-categories (warhammer.com-style fly-out): a
- *     second column on desktop, a slide-over panel on mobile.
- *   - Two levels only (main + sub). A "View all {category}" link in each sub-panel points at the
- *     parent's archive.
+ *   - Every category is a real link to its own archive. Categories that also have children render
+ *     a split row: the label links to the archive, while a chevron toggle reveals the immediate
+ *     sub-categories (warhammer.com-style fly-out) — a second column on desktop, a slide-over
+ *     panel on mobile. On desktop, hovering the row also opens the fly-out.
+ *   - Three levels (main → child → grandchild); the sub-pane heading links to the parent archive.
  *
  * The tree is sourced automatically from WooCommerce, so new/renamed categories appear with no
  * menu maintenance. It's cached in a transient and invalidated whenever a product category is
