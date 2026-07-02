@@ -3,13 +3,13 @@
     flex-wrap: wrap;
     margin-bottom: 1em; /* spacing between rows */
 }
-  
+
   .rmm-new-member-form .form-row .col {
     flex: 1 1 50%;
     box-sizing: border-box;
     padding: 0 0.5em; /* horizontal spacing between columns */
   }
-  
+
   /* Optional: make form look cleaner on smaller screens */
   @media (max-width: 600px) {
     .rmm-new-member-form .form-row .col {
@@ -33,4 +33,57 @@
   .submit-form-row button {
     background-color: #1a1a1a;
     color: #fff;
-  }
+}
+
+/* My Account → Membership tab */
+.rmm-membership__heading {
+    margin-top: 0;
+}
+
+.rmm-membership__details {
+    width: 100%;
+    margin-bottom: 1.5em;
+}
+
+.rmm-membership__details th {
+    text-align: left;
+    width: 40%;
+}
+
+.rmm-membership__badge {
+    display: inline-block;
+    padding: 0.15em 0.7em;
+    border-radius: 999px;
+    font-size: 0.85em;
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.rmm-membership__badge--active {
+    background-color: #e6f4ea;
+    color: #1e7e34;
+}
+
+.rmm-membership__offer {
+    list-style: none;
+    margin: 0 0 1.5em;
+    padding: 0;
+}
+
+.rmm-membership__offer li {
+    margin-bottom: 0.35em;
+}
+
+.rmm-membership__sep {
+    margin: 2em 0;
+    border: 0;
+    border-top: 1px solid #e0e0e0;
+}
+
+.rmm-membership__subheading {
+    margin-bottom: 0.35em;
+}
+
+.rmm-membership__form--link .input-text {
+    max-width: 260px;
+}

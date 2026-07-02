@@ -86,6 +86,14 @@ class TRM_WC_Hooks extends TRM_Core
         // Disable registration form on My Account page (custom registration is handled separately)
         add_filter('option_woocommerce_enable_myaccount_registration', [$this, 'disable_myaccount_registration']);
 
+        // Show the order-received (thank-you) summary without forcing a login. WC 8.4+ hides the
+        // summary behind a login form when the order belongs to a registered customer and the
+        // viewer isn't logged in as them — which is exactly our member/guest checkout flow (a guest
+        // enters their member number and the order is assigned to the member's account). Access is
+        // already gated by the secret order key in the URL (validated before this point), so the
+        // known-shopper login gate only breaks the post-purchase summary. Turn it off.
+        add_filter('woocommerce_order_received_verify_known_shoppers', '__return_false');
+
         // Phone is optional everywhere on the site — flip WC's checkout billing_phone field accordingly.
         add_filter('woocommerce_billing_fields', [$this, 'make_billing_phone_optional'], 99);
         add_filter('woocommerce_default_address_fields', [$this, 'make_address_phone_optional'], 99);

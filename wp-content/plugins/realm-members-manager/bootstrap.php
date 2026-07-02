@@ -3,7 +3,7 @@
 Plugin Name: The Realm Members Manager
 Plugin URI:  https://jamesborg.me
 Description: Manage members of the Realm
-Version:     1.0
+Version:     1.1
 Author:      James Borg
 Author URI:  https://jamesborg.me
 */
@@ -22,6 +22,7 @@ if (verify_requirements_met()) {
     require('includes/classes/admin-ajax-handler.php');
     require('includes/classes/rmm-ajax-handler.php');
     require('includes/classes/wc-hooks-handler.php');
+    require('includes/classes/rmm-account-handler.php');
     require('includes/classes/rmm-upload-handler.php');
     require('includes/classes/rmm-shortcodes-handler.php');
     require('includes/classes/rmm-settings-handler.php');

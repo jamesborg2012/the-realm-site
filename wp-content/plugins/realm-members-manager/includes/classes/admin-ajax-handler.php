@@ -97,9 +97,16 @@ class RMM_Admin_Ajax_Handler extends Realm_Members_Manager_Core
 
     /**
      * Creates the two member coupons (store + online-only) for the given member.
+     *
+     * DISABLED (item 23): member discounts are now applied directly to the cart as a per-tax-class
+     * fee (see RMM_WC_Hooks_Handler::apply_member_discount_fee()), so new members no longer get
+     * coupons. Kept as a no-op — call sites are left intact and existing member coupons are
+     * untouched. Remove entirely once no legacy flow references it.
      */
     private function create_member_coupons($user_id, $member_number, $coupon_expiry_date)
     {
+        return;
+
         $online_only_brand = get_term_by('slug', 'online-only', 'product_brand');
 
         if (!$online_only_brand || is_wp_error($online_only_brand)) {

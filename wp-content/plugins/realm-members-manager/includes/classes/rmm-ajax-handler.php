@@ -21,18 +21,17 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
     }
 
     /**
-     * Applies membership discounts
+     * Validates a member number applied by a (typically logged-out) shopper and records the
+     * matched member in the WC session. The actual discount is applied on cart calculation by
+     * RMM_WC_Hooks_Handler::apply_member_discount_fee() — no coupons are involved (item 23).
      */
     public function apply_membership_discounts()
     {
-        $store_discount = get_option('rmm_member_store_discount', 18);
-        $online_discount = get_option('rmm_member_online_discount', 8);
-
         // Reset any previous membership linkage
         WC()->session->set('member_number', '');
         WC()->session->set('member_user_id', 0);
 
-        $membership_number = $_POST['member_number'] ?? '';
+        $membership_number = isset($_POST['member_number']) ? sanitize_text_field(wp_unslash($_POST['member_number'])) : '';
 
         if (empty($membership_number)) {
             wp_send_json_error([
@@ -41,12 +40,6 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
             ]);
         }
 
-        global $woocommerce;
-
-        $woocommerce->cart->remove_coupons();
-
-        WC()->session->set('member_number', $membership_number);
-
         $result = get_users([
             'role' => 'customer',
             'meta_key' => 'rmm_membership_number',
@@ -54,8 +47,6 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
         ]);
 
         if (empty($result)) {
-            // Clear session if invalid number
-            WC()->session->set('member_user_id', 0);
             wp_send_json_error([
                 'status' => 'error',
                 'message' => 'Number provided does not belong to existing member!'
@@ -66,67 +57,16 @@ class RMM_Ajax_Handler extends Realm_Members_Manager_Core
         $is_active = get_user_meta($user->ID, 'rmm_membership_status', true) == 'active';
         $expire = get_user_meta($user->ID, 'rmm_membership_expire', true);
 
-        if (!$is_active || ($is_active && strtotime($expire) < strtotime('now'))) {
-            // Clear session if not active
-            WC()->session->set('member_user_id', 0);
+        if (!$is_active || empty($expire) || strtotime($expire) < strtotime('today')) {
             wp_send_json_error([
                 'status' => 'error',
                 'message' => 'Customer membership expired or customer is no longer a member!'
             ]);
         }
 
-        // Store the matched user ID for later checkout prefill and order assignment
+        // Record the matched member for the discount fee, checkout prefill and order assignment.
+        WC()->session->set('member_number', $membership_number);
         WC()->session->set('member_user_id', $user->ID);
-
-        $items = $woocommerce->cart->get_cart();
-        $has_shop_items = false;
-        $has_online_only = false;
-
-        foreach ($items as $values) {
-            if ($has_shop_items && $has_online_only) {
-                break;
-            }
-
-            $product = $values['data'];
-            $brands = get_the_terms($product->get_id(), 'product_brand');
-
-            if ($brands === false) {
-                $has_shop_items = true;
-                continue;
-            }
-
-            $brand = reset($brands);
-            if ($brand->slug == 'online-only') {
-                $has_online_only = true;
-                continue;
-            }
-        }
-
-        if ($has_shop_items) {
-            $current_store_coupon = new WC_Coupon($membership_number . 'storedisc');
-            $amount = $current_store_coupon->get_amount();
-
-            if ($amount != $store_discount) {
-                $current_store_coupon->set_amount($store_discount);
-                $current_store_coupon->set_discount_type( 'percent');
-                $current_store_coupon->save();
-            }
-
-            $woocommerce->cart->add_discount(sanitize_text_field($membership_number . "storedisc"));
-        }
-
-        if ($has_online_only) {
-            $current_online_coupon = new WC_Coupon($membership_number . 'onlineonly');
-            $amount = $current_online_coupon->get_amount();
-
-            if ($amount != $online_discount) {
-                $current_online_coupon->set_amount($online_discount);
-                $current_online_coupon->set_discount_type( 'percent');
-                $current_online_coupon->save();
-            }
-            
-            $woocommerce->cart->add_discount(sanitize_text_field($membership_number . "onlineonly"));
-        }
 
         wp_send_json_success([
             'status' => 'success'

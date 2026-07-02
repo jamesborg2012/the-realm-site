@@ -22,6 +22,7 @@ class Realm_Members_Manager_Core
             'RMM_Admin_Ajax_Handler' => RMM_Admin_Ajax_Handler::get_instance(),
             'RMM_Ajax_Handler' => RMM_Ajax_Handler::get_instance(),
             'RMM_WC_Hooks_Handler' => RMM_WC_Hooks_Handler::get_instance(),
+            'RMM_Account_Handler' => RMM_Account_Handler::get_instance(),
             'RMM_Shortcodes_Handler' => RMM_Shortcodes_Handler::get_instance(),
             'RMM_Settings_Handler' => RMM_Settings_Handler::get_instance(),
         );

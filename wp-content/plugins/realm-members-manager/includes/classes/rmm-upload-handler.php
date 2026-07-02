@@ -94,30 +94,9 @@ class RMM_Upload_Handler
 
                 update_user_meta($user->id, 'rmm_membership_expiry', $expire_date);
 
-                $online_only_brand = get_term_by('slug', 'online-only', 'product_brand');
-
-                $coupon = new WC_Coupon();
-
-                $coupon->set_code($row['member_number'] . 'STOREDISC');
-                $coupon->set_discount_type('percent');
-                $coupon->set_amount(20);
-                $coupon->set_date_expires($coupon_expiry_date);
-                $coupon->add_meta_data('exclude_product_brands', [$online_only_brand->term_id]);
-
-                $coupon->save();
-
-                update_user_meta($user->id, 'rmm_membership_store_coupon', $coupon->get_id());
-
-                $coupon = new WC_Coupon();
-
-                $coupon->set_code($row['member_number'] . 'ONLINEONLY');
-                $coupon->set_discount_type('percent');
-                $coupon->set_amount(10);
-                $coupon->set_date_expires($coupon_expiry_date);
-                $coupon->add_meta_data('product_brands', [$online_only_brand->term_id]);
-                $coupon->save();
-
-                update_user_meta($user->id, 'rmm_membership_online_coupon', $coupon->get_id());
+                // Member discounts are applied directly to the cart per tax class (item 23);
+                // imported members no longer get store/online-only coupons.
+                unset($coupon_expiry_date);
             }
         }
     }

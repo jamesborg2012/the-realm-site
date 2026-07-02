@@ -80,6 +80,7 @@ Bootstrap is [functions.php](wp-content/themes/the-realm-malta/functions.php). I
 - Marks orders by users with role `marketing` with order meta `trm_is_marketing_order = 'yes'` (on `woocommerce_checkout_order_processed`).
 - Mirrors all `billing_*` checkout fields to user meta on order placement (`update_user_billing_meta_on_order`, priority 100).
 - **Disables the My Account registration form** (`option_woocommerce_enable_myaccount_registration` returns `'no'` on the account page). Registration goes through the custom Account Creation block instead.
+- **Shows the post-order summary without a login gate** (`woocommerce_order_received_verify_known_shoppers` → `__return_false`, item 23). WC 8.4+ hides the order-received summary behind a login form when the order belongs to a registered customer and the viewer isn't logged in as them — which broke our member/guest checkout (a guest enters a member number and the order is assigned to the member's account). The secret order key in the URL is validated before that gate, so disabling it is safe.
 
 ### Templates & view overrides
 
@@ -142,7 +143,7 @@ All six `realm-*` plugins are first-party code authored by James Borg. Treat the
 
 ### `realm-members-manager` — the big one
 
-Manages members, coupons, pricing tiers, checkout integration.
+Manages members, member discounts, pricing tiers, checkout integration, and the My Account membership tab.
 
 - Core classes:
   - `Realm_Members_Manager_Core` — singleton bootstrap, asset enqueue.
@@ -151,12 +152,14 @@ Manages members, coupons, pricing tiers, checkout integration.
   - `RMM_Ajax_Handler` — frontend `wp_ajax_apply_membership_number` (also nopriv), `register_new_member`.
   - `RMM_Shortcodes_Handler` — `[realm_membership_form]`.
   - `RMM_Settings_Handler` — pricing + discount settings (Settings API).
-  - `RMM_Upload_Handler` — CSV bulk member import; auto-creates **two coupons per member**: a store coupon (excludes "online-only" brand) and an online-only coupon (limited to that brand).
-  - `RMM_WC_Hooks_Handler` — outputs the member-number form on `woocommerce_before_checkout_form`, prefills checkout, assigns matched member to order.
+  - `RMM_Upload_Handler` — CSV bulk member import (member user + meta). _(No longer creates coupons as of item 23.)_
+  - `RMM_WC_Hooks_Handler` — member-number form on `woocommerce_before_checkout_form`, checkout prefill, order-customer assignment, **and the direct per-line member discount** (see below).
+  - `RMM_Account_Handler` — the **My Account "Membership" tab** (item 23): apply to become a member / link an existing number.
 - Admin menus: `realm-members`, `rmm-import-members` (both `manage_woocommerce`), `rmm-manage-membership-pricing`, `rmm-manage-member-discount` (both `manage_options`).
-- User meta written: `rmm_membership_status` (`new` / `active` / `not_active` / `review`), `rmm_membership_number`, `rmm_membership_expire`, `rmm_membership_expires`, `rmm_membership_store_coupon`, `rmm_membership_online_coupon`.
+- User meta written: `rmm_membership_status` (`new` / `active` / `not_active` / `review`), `rmm_membership_number`, `rmm_membership_expire`, `rmm_membership_expires`. (`rmm_membership_store_coupon` / `rmm_membership_online_coupon` are legacy — no longer written.)
 - Options written: `rmm_3/6/9/12_months_membership` (price), `rmm_member_store_discount` (default 18), `rmm_member_online_only_discount` (default 8), `rmm_guest_discount`.
-- **No custom DB tables.** Coupons are real WC coupons. Membership data lives in user meta.
+- **Member discount (item 23):** applied **directly to cart lines** on `woocommerce_before_calculate_totals` (store % on everything, online-only % on the `online-only` brand) — **no coupons**. Chosen over a negative fee because the store is tax-inclusive with mixed VAT rates, so per-line pricing keeps VAT exact. Shows as a "Member Discount" row on cart/checkout and (via order line subtotal + `woocommerce_get_order_item_totals`) on the My Account order view + emails. Auto-applies for logged-in active members; guests apply via the member-number form (session-based).
+- **No custom DB tables.** Membership data lives in user meta; discounts are computed live (no coupons).
 
 ### `realm-events-manager`
 
@@ -234,14 +237,14 @@ Backend order-placing module for in-store sales (alternative to WC's Add Order s
 - For variable products, `variation_id` is used as the effective product_id when non-zero (matches how SKU→product lookup works).
 - Default date range: last 7 days.
 
-### Membership coupon naming convention
+### Membership coupon naming convention _(legacy — item 23)_
 
-Coupon codes containing `storedisc` or `onlineonly` are treated as member discount coupons (`TRM_WC_Hooks::update_coupon_message_member`). Don't rename without grepping both the theme and the members-manager plugin.
+Member discounts are now applied **directly to the cart** (per-line pricing in `RMM_WC_Hooks_Handler`), not via coupons — new members get no coupons. Historically each member had two coupons whose codes contained `storedisc` / `onlineonly`, and `TRM_WC_Hooks::update_coupon_message_member` still rewrites the apply/remove message for any coupon matching those substrings. Existing coupons are left in place but dormant; the message rewrite remains only for them.
 
 ### Cross-plugin dependencies (be careful)
 
 - **`TRM_Cost_Price_DB::get_product_id_by_barcode()`** reads `wp_barcode_lookup` written by the `realm-barcode-scanner` plugin (and possibly the 3rd-party POS barcode plugin). Guarded by a `SHOW TABLES LIKE` check, so it's safe if missing, but barcode→product resolution silently degrades if the scanner plugin is disabled.
-- **`Realm Members Manager`** sets the `rmm_membership_*` meta keys that the theme's AJAX registration reads (`rmm_membership_number` duplicate check, `rmm_membership_status = 'review'` write).
+- **`Realm Members Manager`** sets the `rmm_membership_*` meta keys that the theme's AJAX registration reads (`rmm_membership_number` duplicate check, `rmm_membership_status = 'review'` write). Its My Account "Membership" tab writes the same `review` status. Its member discount depends on the `product_brand: online-only` term (below) to split store vs online-only rates.
 - **`realm-gw-order-tracker`** filters on a `product_brand` taxonomy with an `online-only` term. **This taxonomy is created/maintained by a custom CSV importer built for the client (not in this repo).** Don't expect it to be defined in PHP — it's seeded from the import.
 
 ---
