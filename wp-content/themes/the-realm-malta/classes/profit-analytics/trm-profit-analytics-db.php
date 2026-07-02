@@ -62,7 +62,11 @@ class TRM_Profit_Analytics_DB
     }
 
     /**
-     * Get the full cost price history for a set of product IDs, ordered oldest-first (ASC by id).
+     * Get the full cost price history for a set of product IDs, ordered oldest-first by
+     * effective_date (the date the price was valid from), id as tie-break.
+     *
+     * effective_date — not uploaded_at — drives which cost applies to a past sale, so a
+     * backdated correction lands in the correct period regardless of when it was recorded.
      *
      * @param  int[]  $product_ids
      * @return array<int, object[]>  Keyed by product_id; each value is an array of cost price rows.
@@ -81,10 +85,10 @@ class TRM_Profit_Analytics_DB
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $rows = (array) $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT id, product_id, cost_price, uploaded_at
+                "SELECT id, product_id, cost_price, effective_date, uploaded_at
                  FROM   {$table}
                  WHERE  product_id IN ({$placeholders})
-                 ORDER  BY id ASC",
+                 ORDER  BY effective_date ASC, id ASC",
                 ...$product_ids
             )
         );

@@ -164,9 +164,11 @@ Gaming events calendar.
 
 - CPT `event` (slug `events`) with `show_in_rest`.
 - Taxonomies: `event_category`, `game_system` (both hierarchical, REST-enabled).
-- Meta Box panel "Event Details": `event_date`, `event_start_time`, `event_participants`, `event_location`, `event_register_link`.
-- Shortcode `[realm_events_calendar month="" year=""]` renders an interactive calendar; AJAX `trem_load_calendar` + `trem_load_event` drive month nav and event detail modal.
-- Assets: `assets/js/trem-calendar.js` enqueued only on pages with the shortcode.
+- **Event Details fields are ACF** (`TREM_Event_Fields`, registered via `acf_add_local_field_group`): `event_date`, `event_start_time`, `event_participants`, `event_location`, `event_register_link`, `event_banner` (image). Replaced the old Meta Box panel. Date/time are kept in the legacy `Y-m-d` / `H:i` DB formats via `acf/load_value`+`acf/update_value` filters (ACF pickers store `Ymd`/`H:i:s` natively) so the calendar/upcoming meta queries and existing data keep working.
+- Single event page: [wp-content/themes/the-realm-malta/single-event.php](wp-content/themes/the-realm-malta/single-event.php) (child theme) renders the ACF fields + taxonomy terms + a new-tab register button; styled by `assets/scss/single-event.scss`.
+- **"Events Calendar" ACF block** (`acf/events-calendar`, category `trm-blocks`, registered by `TREM_Block_Calendar`) renders an interactive calendar; AJAX `trem_load_calendar` + `trem_load_event` drive month nav and event detail modal. Replaced the old `[realm_events_calendar]` shortcode.
+- **"Upcoming Events" ACF block** (`acf/upcoming-events`, registered by `TREM_Block_Upcoming_Events`) — agenda-style list of the next N upcoming events with optional `event_category` / `game_system` filters. ACF fields registered in PHP (not acf-json); config is per-block-instance.
+- Assets: `assets/css/trem-calendar.css` + `assets/js/trem-calendar.js` (calendar block) and `assets/css/trem-upcoming-events.css` (upcoming block), enqueued via each block's `enqueue_assets` callback.
 
 ### `realm-barcode-scanner`
 
@@ -216,17 +218,19 @@ Backend order-placing module for in-store sales (alternative to WC's Add Order s
 
 - Admin page **WooCommerce → Cost Prices** (slug `trm-cost-price`, `manage_woocommerce`).
 - Two tabs: **Dashboard** (paginated 50/page, with SKU search) and **Upload** (CSV upload).
-- Custom table `{prefix}trm_product_cost_price` (`id`, `product_id`, `sku`, `cost_price DECIMAL(10,2)`, `uploaded_at`, `uploaded_by`, `source` ['upload'|'inline']). Schema versioned via `trm_cost_price_db_version` option (currently `1.1`).
-- CSV format: `sku, cost_price` (header optional). Validation: rows whose cost price hasn't changed since the previous upload are reported as **unchanged** and skipped; bad rows go into a transient `trm_cp_upload_errors_{user_id}` for the next render.
-- **Append-only history** — every upload inserts a new row; "current" is `MAX(id)` per `product_id`. This is what powers profit analytics over time.
-- **Inline editing** (AJAX `trm_cost_price_inline_update`): each dashboard row's cost price is editable in place. An inline edit appends a new `source='inline'` row, EXCEPT when the latest row is itself an inline edit from within the last hour — then it overwrites that row so quick corrections don't churn history. CSV (`upload`) rows are never overwritten.
+- Custom table `{prefix}trm_product_cost_price` (`id`, `product_id`, `sku`, `cost_price DECIMAL(10,2)`, `effective_date DATE`, `uploaded_at`, `uploaded_by`, `source` ['upload'|'inline'|'manual']). Schema versioned via `trm_cost_price_db_version` option (currently `1.2`).
+- **`effective_date` = the date a price was VALID FROM** (distinct from `uploaded_at`, the audit "recorded on" timestamp). This split (item 26) lets cost prices be **backdated** so past sales report true profit; the 1.2 migration backfills `effective_date = DATE(uploaded_at)`.
+- CSV format: `sku, cost_price` (header optional; CSV rows get `effective_date = today`). Validation: rows whose cost price hasn't changed since the previous upload are reported as **unchanged** and skipped; bad rows go into a transient `trm_cp_upload_errors_{user_id}` for the next render.
+- **"Current" cost price** = the row with the greatest `effective_date` on/before today (id tie-break), **not** `MAX(id)` — a backdated row has a higher id but earlier effective date and must not be treated as current. Full append-only history powers profit analytics over time.
+- **Inline editing** (AJAX `trm_cost_price_inline_update`): each dashboard row's *current* cost price is editable in place (writes `effective_date = today`, `source='inline'`). An inline edit appends, EXCEPT when the current row is a today-effective inline edit from within the last hour — then it overwrites that row so quick corrections don't churn history. `upload`/`manual` rows are never overwritten.
+- **Backdated entries** (item 26): each product's history panel lists records by effective date (current one badged) and lets them be edited/deleted (`trm_cost_price_update_row` / `trm_cost_price_delete_row`) and new past-dated prices added (`trm_cost_price_add_dated` → `source='manual'`). Future dates rejected server-side.
 - **WC product export:** current cost price (current only, no history) is added as a "Cost Price" column to WooCommerce's built-in product CSV exporter (`woocommerce_product_export_*` filters in `TRM_Cost_Price`).
 
 ### Profit Analytics (theme: `classes/profit-analytics/`)
 
 - Admin page **WooCommerce → Profit Analytics** (`trm-profit-analytics`, `manage_woocommerce`).
 - Reads **WC Analytics lookup tables** (`wc_order_product_lookup`, `wc_order_stats`) — HPOS-compatible. Filters orders to status `wc-completed` / `wc-processing`. Revenue uses `product_net_revenue` (post-discount, pre-tax/shipping).
-- Joins per-line-item revenue against the cost-price history table and bins each line into the cost-price-period that was active at the time of the order — so a single product can appear as multiple rows in a date range if its cost price changed mid-range.
+- Joins per-line-item revenue against the cost-price history table and bins each line into the cost-price-period that was active at the time of the order — matched by **`effective_date`**, so backdated cost prices bin correctly. A single product can appear as multiple rows in a date range if its cost price changed mid-range.
 - For variable products, `variation_id` is used as the effective product_id when non-zero (matches how SKU→product lookup works).
 - Default date range: last 7 days.
 

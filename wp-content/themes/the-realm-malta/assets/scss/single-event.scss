@@ -1,0 +1,121 @@
+/* === Single Event page (event CPT) === */
+$trm-event-accent: #0073aa;
+$trm-event-accent-dark: #005f8a;
+$trm-event-muted: #5a6b76;
+
+/* Full-width: override Storefront's default right-sidebar layout, which caps
+   .content-area at ~74% even though the event template renders no widget area.
+   Scoped with body.single-event to reliably beat Storefront's own specificity. */
+body.single-event {
+	.content-area {
+		width: 100%;
+		float: none;
+		margin-right: 0;
+		margin-left: 0;
+	}
+
+	#secondary,
+	.widget-area {
+		display: none;
+	}
+}
+
+.trm-single-event {
+	width: 100%;
+
+	&__banner {
+		margin-bottom: 1.5rem;
+
+		&-img {
+			display: block;
+			width: 100%;
+			height: auto;
+			border-radius: 10px;
+		}
+	}
+
+	&__title {
+		margin: 0 0 0.75rem;
+		line-height: 1.15;
+	}
+
+	&__taxonomies {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.5rem;
+		margin-bottom: 1.5rem;
+		font-size: 0.95rem;
+		color: $trm-event-muted;
+	}
+
+	&__terms-label {
+		font-weight: 600;
+		margin-right: 0.35rem;
+	}
+
+	&__terms a {
+		color: $trm-event-accent;
+		text-decoration: none;
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+
+	&__meta {
+		list-style: none;
+		margin: 0 0 2rem;
+		padding: 1.25rem 1.5rem;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+		gap: 1rem 1.5rem;
+		background: #f4f8fb;
+		border: 1px solid #e0ebf2;
+		border-radius: 10px;
+	}
+
+	&__meta-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+
+	&__meta-label {
+		font-size: 0.72rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: $trm-event-muted;
+	}
+
+	&__meta-value {
+		font-size: 1.05rem;
+		font-weight: 600;
+		color: #1a1a1a;
+	}
+
+	&__content {
+		margin-bottom: 2rem;
+		line-height: 1.7;
+	}
+
+	&__cta {
+		margin-bottom: 2rem;
+	}
+
+	&__register.button {
+		display: inline-block;
+		background: $trm-event-accent;
+		color: #fff;
+		padding: 0.85rem 1.75rem;
+		font-weight: 600;
+		border-radius: 6px;
+		text-decoration: none;
+
+		&:hover,
+		&:focus {
+			background: $trm-event-accent-dark;
+			color: #fff;
+		}
+	}
+}

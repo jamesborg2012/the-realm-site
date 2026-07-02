@@ -1,65 +1,30 @@
 <?php
 if (! defined('ABSPATH')) exit;
 
-class TREM_Shortcode_Calendar
+/**
+ * Calendar rendering + AJAX.
+ *
+ * The calendar is placed on a page via the "Events Calendar" ACF block
+ * (see TREM_Block_Calendar). This class owns the shared markup rendering
+ * and the AJAX endpoints used for month navigation and event detail modals.
+ */
+class TREM_Calendar
 {
 
     public static function init()
     {
-        add_shortcode('realm_events_calendar', [__CLASS__, 'render_calendar']);
-
-        // AJAX endpoints
+        // AJAX: month navigation
         add_action('wp_ajax_trem_load_calendar', [__CLASS__, 'ajax_load_calendar']);
         add_action('wp_ajax_nopriv_trem_load_calendar', [__CLASS__, 'ajax_load_calendar']);
 
         // AJAX: single event details
         add_action('wp_ajax_trem_load_event', [__CLASS__, 'ajax_load_event']);
         add_action('wp_ajax_nopriv_trem_load_event', [__CLASS__, 'ajax_load_event']);
-
-
-        // Enqueue JS for navigation
-        add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_scripts']);
     }
 
     /**
-     * Enqueue JavaScript for calendar navigation.
-     */
-    public static function enqueue_scripts()
-    {
-        wp_register_script(
-            'trem-calendar-js',
-            TREM_URL . 'assets/js/trem-calendar.js',
-            ['jquery'],
-            '1.0.0',
-            true
-        );
-
-        wp_localize_script('trem-calendar-js', 'tremCalendar', [
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'currentMonth' => date('m'),
-            'currentYear'  => date('Y'),
-        ]);
-    }
-
-    /**
-     * Main shortcode renderer.
-     */
-    public static function render_calendar($atts)
-    {
-        $atts = shortcode_atts([
-            'month' => date('m'),
-            'year'  => date('Y'),
-        ], $atts);
-
-        wp_enqueue_script('trem-calendar-js');
-
-        ob_start();
-        self::render_calendar_view(intval($atts['month']), intval($atts['year']));
-        return ob_get_clean();
-    }
-
-    /**
-     * Used both in shortcode and AJAX.
+     * Render the calendar markup for a given month/year.
+     * Shared by the ACF block render callback and the AJAX nav handler.
      */
     public static function render_calendar_view($month, $year)
     {
@@ -117,7 +82,6 @@ class TREM_Shortcode_Calendar
 
         wp_send_json_success(['html' => $html]);
     }
-
 
     /**
      * Query events within the given month.

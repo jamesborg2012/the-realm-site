@@ -147,6 +147,115 @@
     font-weight: 600;
 }
 
+.trm-history-table .trm-hist-col-act {
+    width: 130px;
+}
+
+/* Explicit display rules below would otherwise override the [hidden] attribute. */
+.trm-history-details [hidden] {
+    display: none !important;
+}
+
+/* Current-in-effect row + badge */
+.trm-hist-row.is-current {
+    background: #f0f6ec;
+}
+
+.trm-hist-current-badge {
+    display: none;
+    margin-left: 6px;
+    background: #46812b;
+    color: #fff;
+    font-size: 0.72em;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 9px;
+    vertical-align: middle;
+}
+
+.trm-hist-row.is-current .trm-hist-current-badge {
+    display: inline-block;
+}
+
+.trm-hist-source {
+    display: inline-block;
+    margin-left: 6px;
+    color: #888;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.trm-hist-price-input {
+    width: 80px;
+}
+
+.trm-hist-actions {
+    white-space: nowrap;
+}
+
+.trm-hist-edit,
+.trm-hist-delete {
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.trm-hist-edit {
+    color: #2271b1;
+}
+
+.trm-hist-delete {
+    color: #d63638;
+}
+
+.trm-hist-spinner,
+.trm-add-spinner {
+    float: none;
+    margin: 0 0 0 4px;
+    vertical-align: middle;
+}
+
+.trm-hist-error,
+.trm-add-error {
+    display: block;
+    margin-top: 4px;
+    color: #d63638;
+    font-size: 0.9em;
+}
+
+/* Add-a-backdated-price form */
+.trm-add-dated {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px dashed #c3c4c7;
+    border-radius: 3px;
+}
+
+.trm-add-dated > strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+.trm-add-fields {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.trm-add-fields label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.9em;
+}
+
+.trm-add-fields .trm-add-price {
+    width: 90px;
+}
+
 /* ── Empty state ───────────────────────────────────────────── */
 
 .trm-empty-state {

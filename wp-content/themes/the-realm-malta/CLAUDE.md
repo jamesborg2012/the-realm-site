@@ -143,20 +143,25 @@ Tabs: `dashboard` (default) and `upload`.
 
 **DB table:** `{prefix}trm_product_cost_price`
 ```
-id           BIGINT UNSIGNED PK
-product_id   BIGINT UNSIGNED (indexed)
-sku          VARCHAR(191) (indexed)
-cost_price   DECIMAL(10,2)
-uploaded_at  DATETIME (indexed)
-uploaded_by  BIGINT UNSIGNED
-source       VARCHAR(20) DEFAULT 'upload'   -- 'upload' (CSV) | 'inline' (dashboard edit)
+id             BIGINT UNSIGNED PK
+product_id     BIGINT UNSIGNED (indexed)
+sku            VARCHAR(191) (indexed)
+cost_price     DECIMAL(10,2)
+effective_date DATE (indexed)                  -- the date the price was VALID FROM
+uploaded_at    DATETIME (indexed)              -- audit: when the row was recorded
+uploaded_by    BIGINT UNSIGNED
+source         VARCHAR(20) DEFAULT 'upload'     -- 'upload' (CSV) | 'inline' (today edit) | 'manual' (backdated entry)
 ```
 
-Schema versioned via the `trm_cost_price_db_version` option (currently `1.1`). `maybe_install_db()` runs on `after_switch_theme` AND `admin_init`, so the table self-heals / migrates (dbDelta adds the `source` column on existing installs) if missing or out of date.
+Schema versioned via the `trm_cost_price_db_version` option (currently `1.2`). `maybe_install_db()` runs on `after_switch_theme` AND `admin_init`, so the table self-heals / migrates if missing or out of date (dbDelta added `source` at 1.1 and `effective_date` at 1.2; the 1.2 install backfills `effective_date = DATE(uploaded_at)` for legacy rows).
 
-**Append-only** (mostly). "Current" cost price for a product = `MAX(id) WHERE product_id = ?`. This is the source of the history used by Profit Analytics.
+**`effective_date` vs `uploaded_at` — the key distinction.** `uploaded_at` is purely the audit timestamp ("when did we record this"); `effective_date` is what drives *which cost applies to a sale*. This split (added in item 26) lets a cost price be **backdated** so past sales report true profit.
 
-**Inline editing.** Each dashboard row's cost price is editable in place (AJAX `trm_cost_price_inline_update`, nonce `trm_cost_price_inline`, cap `manage_woocommerce`, handled by `TRM_Cost_Price::ajax_inline_update()` → `TRM_Cost_Price_DB::upsert_inline_price()`). Inline edits write `source = 'inline'`. **De-noising rule:** if the latest record is itself an `inline` edit made within the last hour, the edit overwrites that row in place (refreshing `cost_price`/`uploaded_at`) instead of appending — so rapid corrections don't create history churn. A CSV-uploaded (`upload`) record is never overwritten; the first inline edit after an upload always appends a new row. JS: [assets/js/admin/cost-price.js](assets/js/admin/cost-price.js).
+**Append-only** (uploads/backdated entries; inline today-edits collapse — see below). **"Current" cost price** for a product = the row with the **greatest `effective_date` on/before today, id as tie-break** — NOT `MAX(id)`. A backdated correction has a higher id but an earlier effective date, so `MAX(id)` would wrongly treat it as current; every "current" query (`get_current_price`, `get_all_current_prices`, `get_current_prices_by_product_ids`, `get_current_price_with_product`) uses a greatest-effective-date lookup / anti-join instead. Full history powers Profit Analytics.
+
+**Inline "today" editing.** Each dashboard row's *current* cost price is editable in place (AJAX `trm_cost_price_inline_update`, nonce `trm_cost_price_inline`, cap `manage_woocommerce`, handled by `TRM_Cost_Price::ajax_inline_update()` → `TRM_Cost_Price_DB::upsert_inline_price()`). Inline edits write `source = 'inline'`, `effective_date = today`. **De-noising rule:** if the current row is itself a today-effective `inline` edit made within the last hour, the edit overwrites it in place instead of appending — so rapid corrections don't churn history. `upload`/`manual` rows are never overwritten. JS: [assets/js/admin/cost-price.js](assets/js/admin/cost-price.js).
+
+**Backdated (dated) cost prices — item 26.** Each product's history `<details>` panel lists every record by effective date (current row badged), and lets each be **edited / deleted** and new **backdated** prices added (price + "valid from" date). AJAX (same nonce/cap): `trm_cost_price_add_dated` → `insert_dated_price()` (`source='manual'`, append-only), `trm_cost_price_update_row` → `update_row()` (edits `cost_price`/`effective_date`, leaves `uploaded_at`), `trm_cost_price_delete_row` → `delete_row()`. Each response returns the product's recomputed current price so the main cell + current badge refresh live. Future dates are rejected server-side.
 
 **WooCommerce product export.** The current cost price (current value only, no history) is exposed as a "Cost Price" column in WC's built-in product CSV exporter via `woocommerce_product_export_column_names` / `_product_default_columns` / `_product_column_trm_cost_price` (`TRM_Cost_Price::add_export_column()` / `export_column_value()`). Variations resolve by `variation_id`.
 
@@ -177,7 +182,7 @@ Admin page: **WooCommerce → Profit Analytics** (`trm-profit-analytics`, `manag
 - Reads **WC Analytics lookup tables** (HPOS-compatible): `wc_order_product_lookup` (line items) JOIN `wc_order_stats` (for status filter). Only `wc-completed` and `wc-processing` count.
 - Revenue uses `product_net_revenue` (after discounts, before tax/shipping).
 - For variable products, the effective product ID is `COALESCE(NULLIF(variation_id, 0), product_id)` — matches how cost prices are keyed by SKU.
-- Cost-price-period binning: for each line item, finds the latest cost price uploaded **at or before** the order date. Aggregation key = `product_id . '_' . cp_id`, so a product whose cost price changed mid-range will appear as multiple rows. `period_start` = `MAX(cp.uploaded_at, range_start)`; `period_end` = next CP change − 1s, or `range_end`.
+- Cost-price-period binning: for each line item, finds the latest cost price whose **`effective_date`** is on or before the order date (not `uploaded_at` — so backdated prices bin correctly). Aggregation key = `product_id . '_' . cp_id`, so a product whose cost price changed mid-range will appear as multiple rows. `period_start` = `MAX(cp.effective_date, range_start)`; `period_end` = next CP change − 1s, or `range_end`. History is fetched ordered by `effective_date ASC, id ASC`.
 - Output sorted by product title ASC, then `period_start` ASC.
 
 ## WooCommerce template overrides
@@ -193,6 +198,10 @@ In [woocommerce/](woocommerce/):
 
 Most overrides are at WC template versions 9.x–10.x — when bumping WC, check the `@version` header against the live WC template and re-merge.
 
+## Other front-end templates
+
+- [single-event.php](single-event.php) — single template for the `event` CPT (owned by the `realm-events-manager` plugin). Mirrors Storefront's `single.php`; renders the event's ACF fields via `get_field()` (banner, date, time, location, participants) plus `event_category` / `game_system` terms, and a new-tab "Register" button when `event_register_link` is set. Styled by `assets/scss/single-event.scss`.
+
 ## Asset pipeline
 
 SCSS source in [assets/scss/](assets/scss/), compiled to a single `assets/css/layout.css`:
@@ -203,7 +212,7 @@ npm run compile:sass     # one-off
 npm run watch:sass       # dev
 ```
 
-Entry: [assets/scss/styles.scss](assets/scss/styles.scss) → uses `variables`, `font`, `general`, `mega-menu`, `wc-shop`, `wc-cart`, `wc-single-product`, `wc-product-cat`.
+Entry: [assets/scss/styles.scss](assets/scss/styles.scss) → uses `variables`, `font`, `general`, `mega-menu`, `wc-shop`, `wc-cart`, `wc-single-product`, `wc-product-cat`, `single-event`.
 
 Admin CSS is hand-written (no SCSS): `assets/css/admin/admin.css`, `cost-price.css`, `profit-analytics.css`.
 

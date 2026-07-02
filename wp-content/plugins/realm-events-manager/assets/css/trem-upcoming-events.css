@@ -1,0 +1,121 @@
+/* === The Realm Events Manager - Upcoming Events agenda widget === */
+.trem-upcoming {
+  font-family: system-ui, sans-serif;
+  margin: 2rem 0;
+}
+
+.trem-upcoming__heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+}
+
+.trem-upcoming__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e4e4e4;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.trem-upcoming__item {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.trem-upcoming__item:last-child {
+  border-bottom: none;
+}
+
+.trem-upcoming__date {
+  flex: 0 0 3.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f4f8fb;
+  border: 1px solid #e0ebf2;
+  border-radius: 6px;
+  padding: 0.35rem 0;
+  line-height: 1.1;
+}
+
+.trem-upcoming__day {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0073aa;
+}
+
+.trem-upcoming__month {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #5a6b76;
+}
+
+.trem-upcoming__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.trem-upcoming__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-decoration: none;
+}
+
+.trem-upcoming__title:hover {
+  color: #0073aa;
+  text-decoration: underline;
+}
+
+.trem-upcoming__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  color: #5a6b76;
+}
+
+.trem-upcoming__location::before {
+  content: "\25CF";
+  margin-right: 0.4rem;
+  color: #c3ccd2;
+  font-size: 0.6rem;
+  vertical-align: middle;
+}
+
+.trem-upcoming__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+
+.trem-upcoming__tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #0073aa;
+  background: #eaf3f8;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+}
+
+.trem-upcoming__empty {
+  margin: 0;
+  padding: 1rem;
+  color: #777;
+  font-style: italic;
+  border: 1px dashed #ddd;
+  border-radius: 8px;
+}

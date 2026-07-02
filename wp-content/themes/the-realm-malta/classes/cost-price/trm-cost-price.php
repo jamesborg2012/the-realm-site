@@ -24,6 +24,11 @@ class TRM_Cost_Price extends TRM_Core
         // Inline cost-price editing on the dashboard.
         add_action('wp_ajax_trm_cost_price_inline_update', [$this, 'ajax_inline_update']);
 
+        // Backdated / historical cost-price management on the dashboard.
+        add_action('wp_ajax_trm_cost_price_add_dated',   [$this, 'ajax_add_dated']);
+        add_action('wp_ajax_trm_cost_price_update_row',  [$this, 'ajax_update_row']);
+        add_action('wp_ajax_trm_cost_price_delete_row',  [$this, 'ajax_delete_row']);
+
         // Expose the current cost price in the WooCommerce product CSV export.
         add_filter('woocommerce_product_export_column_names',                  [$this, 'add_export_column']);
         add_filter('woocommerce_product_export_product_default_columns',       [$this, 'add_export_column']);
@@ -64,14 +69,14 @@ class TRM_Cost_Price extends TRM_Core
             'trm-cost-price-admin',
             get_stylesheet_directory_uri() . '/assets/css/admin/cost-price.css',
             [],
-            '1.0'
+            '1.1'
         );
 
         wp_enqueue_script(
             'trm-cost-price-admin',
             get_stylesheet_directory_uri() . '/assets/js/admin/cost-price.js',
             ['jquery'],
-            '1.0',
+            '1.1',
             true
         );
 
@@ -127,6 +132,188 @@ class TRM_Cost_Price extends TRM_Core
             'cost_price' => number_format((float) $row->cost_price, 2),
             'updated_at' => date_i18n('d M Y H:i', strtotime($row->uploaded_at)),
         ]);
+    }
+
+    /**
+     * AJAX: add a cost price valid from a specific (typically past) date.
+     */
+    public function ajax_add_dated(): void
+    {
+        $this->verify_ajax_request();
+
+        $product_id = absint($_POST['product_id'] ?? 0);
+        $cost_price = $this->parse_price($_POST['cost_price'] ?? '');
+        $effective  = $this->parse_effective_date($_POST['effective_date'] ?? '');
+
+        if ($product_id <= 0) {
+            wp_send_json_error(['message' => 'Invalid product.']);
+        }
+        if ($cost_price === null) {
+            wp_send_json_error(['message' => 'Please enter a valid cost price.']);
+        }
+        if ($effective === null) {
+            wp_send_json_error(['message' => 'Please enter a valid date (not in the future).']);
+        }
+
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            wp_send_json_error(['message' => 'Product not found.']);
+        }
+
+        $sku = $product->get_sku();
+        if ($sku === '') {
+            $existing = TRM_Cost_Price_DB::get_current_price($product_id);
+            $sku      = $existing->sku ?? '';
+        }
+
+        $inserted = TRM_Cost_Price_DB::insert_dated_price(
+            $product_id,
+            $sku,
+            $cost_price,
+            $effective,
+            get_current_user_id()
+        );
+
+        if (!$inserted) {
+            wp_send_json_error(['message' => 'Could not save the cost price. Please try again.']);
+        }
+
+        wp_send_json_success([
+            'row'     => $this->format_history_row($inserted),
+            'current' => $this->format_current($product_id),
+        ]);
+    }
+
+    /**
+     * AJAX: edit the price and/or effective date of an existing history row.
+     */
+    public function ajax_update_row(): void
+    {
+        $this->verify_ajax_request();
+
+        $row_id     = absint($_POST['row_id'] ?? 0);
+        $cost_price = $this->parse_price($_POST['cost_price'] ?? '');
+        $effective  = $this->parse_effective_date($_POST['effective_date'] ?? '');
+
+        $row = $row_id > 0 ? TRM_Cost_Price_DB::get_row($row_id) : null;
+        if (!$row) {
+            wp_send_json_error(['message' => 'Record not found.']);
+        }
+        if ($cost_price === null) {
+            wp_send_json_error(['message' => 'Please enter a valid cost price.']);
+        }
+        if ($effective === null) {
+            wp_send_json_error(['message' => 'Please enter a valid date (not in the future).']);
+        }
+
+        if (!TRM_Cost_Price_DB::update_row($row_id, $cost_price, $effective)) {
+            wp_send_json_error(['message' => 'Could not update the record. Please try again.']);
+        }
+
+        $updated = TRM_Cost_Price_DB::get_row($row_id);
+
+        wp_send_json_success([
+            'row'     => $this->format_history_row($updated),
+            'current' => $this->format_current((int) $row->product_id),
+        ]);
+    }
+
+    /**
+     * AJAX: delete a single history row.
+     */
+    public function ajax_delete_row(): void
+    {
+        $this->verify_ajax_request();
+
+        $row_id = absint($_POST['row_id'] ?? 0);
+        $row    = $row_id > 0 ? TRM_Cost_Price_DB::get_row($row_id) : null;
+        if (!$row) {
+            wp_send_json_error(['message' => 'Record not found.']);
+        }
+
+        if (!TRM_Cost_Price_DB::delete_row($row_id)) {
+            wp_send_json_error(['message' => 'Could not delete the record. Please try again.']);
+        }
+
+        wp_send_json_success([
+            'current' => $this->format_current((int) $row->product_id),
+        ]);
+    }
+
+    /**
+     * Shared nonce + capability gate for the dashboard AJAX actions.
+     */
+    private function verify_ajax_request(): void
+    {
+        check_ajax_referer('trm_cost_price_inline', 'nonce');
+
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(['message' => 'You do not have permission to do this.'], 403);
+        }
+    }
+
+    /**
+     * Normalise a posted price to a rounded float, or null if invalid.
+     * Accepts a dot or comma decimal separator.
+     */
+    private function parse_price($raw): ?float
+    {
+        $raw        = sanitize_text_field(wp_unslash($raw));
+        $normalised = str_replace(',', '.', $raw);
+
+        if ($normalised === '' || !is_numeric($normalised) || (float) $normalised < 0) {
+            return null;
+        }
+
+        return round((float) $normalised, 2);
+    }
+
+    /**
+     * Validate a posted Y-m-d effective date, or null if invalid / in the future.
+     */
+    private function parse_effective_date($raw): ?string
+    {
+        $raw = sanitize_text_field(wp_unslash($raw));
+        $d   = DateTime::createFromFormat('Y-m-d', $raw);
+
+        if ($d === false || $d->format('Y-m-d') !== $raw) {
+            return null;
+        }
+        if ($raw > current_time('Y-m-d')) {
+            return null;
+        }
+
+        return $raw;
+    }
+
+    /**
+     * Shape a cost-price row for the history table in the JS response.
+     */
+    private function format_history_row(object $row): array
+    {
+        return [
+            'id'             => (int) $row->id,
+            'cost_price'     => number_format((float) $row->cost_price, 2),
+            'effective_date' => $row->effective_date,
+            'effective_disp' => date_i18n('d M Y', strtotime($row->effective_date)),
+            'recorded_disp'  => date_i18n('d M Y H:i', strtotime($row->uploaded_at)),
+            'source'         => $row->source,
+        ];
+    }
+
+    /**
+     * Shape the product's current cost price (post-change) for the dashboard cell.
+     * Returns null values when the product no longer has any effective cost price.
+     */
+    private function format_current(int $product_id): array
+    {
+        $row = TRM_Cost_Price_DB::get_current_price($product_id);
+
+        return [
+            'id'         => $row ? (int) $row->id : 0,
+            'cost_price' => $row ? number_format((float) $row->cost_price, 2) : '',
+            'updated_at' => $row ? date_i18n('d M Y H:i', strtotime($row->uploaded_at)) : '',
+        ];
     }
 
     /**

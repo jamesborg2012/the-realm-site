@@ -22,16 +22,19 @@ class TREM_Plugin
         // Load components
         $this->load_dependencies();
 
-        // Enqueue plugin assets
-        add_action('init', ['TREM_Assets', 'init']);
-
         // Hooks
         add_action('init', ['TREM_Post_Type_Event', 'register']);
         add_action('init', ['TREM_Taxonomies', 'register']);
-        add_action('rwmb_meta_boxes', ['TREM_Meta_Event', 'register_meta_box']);
 
-        // Shortcode
-        add_action('init', ['TREM_Shortcode_Calendar', 'init']);
+        // Event Details fields (ACF — replaces the old Meta Box panel)
+        TREM_Event_Fields::init();
+
+        // Calendar: AJAX endpoints + "Events Calendar" ACF block
+        add_action('init', ['TREM_Calendar', 'init']);
+        TREM_Block_Calendar::init();
+
+        // "Upcoming Events" agenda ACF block
+        TREM_Block_Upcoming_Events::init();
     }
 
     private function load_dependencies()

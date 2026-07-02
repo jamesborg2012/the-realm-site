@@ -1,6 +1,7 @@
 <?php
-$days_in_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
-$first_day_of_month = date('N', strtotime("$year-$month-01"));
+$first_of_month = sprintf('%04d-%02d-01', $year, $month);
+$days_in_month = (int) date('t', strtotime($first_of_month));
+$first_day_of_month = date('N', strtotime($first_of_month));
 $month_name = date('F Y', strtotime("$year-$month-01"));
 ?>
 

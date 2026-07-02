@@ -1494,6 +1494,105 @@ body.woocommerce-cart .cart-collaterals .cart_totals .checkout-button {
   color: #000;
 }
 
+/* === Single Event page (event CPT) === */
+/* Full-width: override Storefront's default right-sidebar layout, which caps
+   .content-area at ~74% even though the event template renders no widget area.
+   Scoped with body.single-event to reliably beat Storefront's own specificity. */
+body.single-event .content-area {
+  width: 100%;
+  float: none;
+  margin-right: 0;
+  margin-left: 0;
+}
+body.single-event #secondary,
+body.single-event .widget-area {
+  display: none;
+}
+
+.trm-single-event {
+  width: 100%;
+}
+.trm-single-event__banner {
+  margin-bottom: 1.5rem;
+}
+.trm-single-event__banner-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+.trm-single-event__title {
+  margin: 0 0 0.75rem;
+  line-height: 1.15;
+}
+.trm-single-event__taxonomies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  color: #5a6b76;
+}
+.trm-single-event__terms-label {
+  font-weight: 600;
+  margin-right: 0.35rem;
+}
+.trm-single-event__terms a {
+  color: #0073aa;
+  text-decoration: none;
+}
+.trm-single-event__terms a:hover {
+  text-decoration: underline;
+}
+.trm-single-event__meta {
+  list-style: none;
+  margin: 0 0 2rem;
+  padding: 1.25rem 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem 1.5rem;
+  background: #f4f8fb;
+  border: 1px solid #e0ebf2;
+  border-radius: 10px;
+}
+.trm-single-event__meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.trm-single-event__meta-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5a6b76;
+}
+.trm-single-event__meta-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.trm-single-event__content {
+  margin-bottom: 2rem;
+  line-height: 1.7;
+}
+.trm-single-event__cta {
+  margin-bottom: 2rem;
+}
+.trm-single-event__register.button {
+  display: inline-block;
+  background: #0073aa;
+  color: #fff;
+  padding: 0.85rem 1.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.trm-single-event__register.button:hover, .trm-single-event__register.button:focus {
+  background: #005f8a;
+  color: #fff;
+}
+
 /* Header live-search dropdown — wraps the existing .woocommerce-product-search form.
  *
  * The form is given a pill shape with a plain magnifier icon button on the right and an

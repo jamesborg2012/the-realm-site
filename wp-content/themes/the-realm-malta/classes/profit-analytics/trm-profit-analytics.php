@@ -127,7 +127,9 @@ class TRM_Profit_Analytics extends TRM_Core
                     'product_title' => $item->post_title,
                     'sku'           => $item->sku,
                     'cost_price'    => $active_cp ? (float) $active_cp->cost_price : null,
-                    'cp_set_on'     => $active_cp ? $active_cp->uploaded_at        : null,
+                    // Normalise the DATE to a datetime so it compares cleanly against the
+                    // 'Y-m-d H:i:s' range bounds below.
+                    'cp_set_on'     => $active_cp ? $active_cp->effective_date . ' 00:00:00' : null,
                     'period_start'  => null,
                     'period_end'    => null,
                     'units_sold'    => 0,
@@ -169,14 +171,14 @@ class TRM_Profit_Analytics extends TRM_Core
     }
 
     /**
-     * Return the latest cost price row active at or before $order_ts, or null if none.
-     * $history must be sorted ASC by id (oldest first).
+     * Return the latest cost price row whose effective_date is on or before $order_ts,
+     * or null if none. $history must be sorted ASC by effective_date (oldest first).
      */
     private function find_active_cost_price(array $history, int $order_ts): ?object
     {
         $active = null;
         foreach ($history as $cp) {
-            if (strtotime($cp->uploaded_at) <= $order_ts) {
+            if (strtotime($cp->effective_date) <= $order_ts) {
                 $active = $cp;
             } else {
                 break;
@@ -201,10 +203,14 @@ class TRM_Profit_Analytics extends TRM_Core
         $range_start = $date_from . ' 00:00:00';
         $range_end   = $date_to   . ' 23:59:59';
 
-        // All CP change timestamps per product (ASC), for calculating period boundaries.
+        // All CP effective dates per product (ASC), normalised to datetime, for
+        // calculating period boundaries.
         $all_cp_dates_by_product = [];
         foreach ($cp_history as $pid => $cps) {
-            $all_cp_dates_by_product[$pid] = array_column($cps, 'uploaded_at');
+            $all_cp_dates_by_product[$pid] = array_map(
+                fn($cp) => $cp->effective_date . ' 00:00:00',
+                $cps
+            );
         }
 
         foreach ($aggregated as $key => &$row) {

@@ -2,7 +2,7 @@
 
 class TRM_Cost_Price_DB
 {
-    const DB_VERSION = '1.1';
+    const DB_VERSION = '1.2';
 
     private static function table_name(): string
     {
@@ -17,22 +17,34 @@ class TRM_Cost_Price_DB
         $table_name      = self::table_name();
         $charset_collate = $wpdb->get_charset_collate();
 
+        // effective_date is the date the cost price was *valid from* (distinct from
+        // uploaded_at, which is when the row was recorded). Nullable so dbDelta can add
+        // it to existing installs without a strict-mode default; every insert sets it and
+        // the backfill below populates legacy rows.
         $sql = "CREATE TABLE {$table_name} (
-            id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            product_id   BIGINT UNSIGNED NOT NULL,
-            sku          VARCHAR(191)    NOT NULL,
-            cost_price   DECIMAL(10, 2)  NOT NULL,
-            uploaded_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            uploaded_by  BIGINT UNSIGNED NOT NULL,
-            source       VARCHAR(20)     NOT NULL DEFAULT 'upload',
+            id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            product_id     BIGINT UNSIGNED NOT NULL,
+            sku            VARCHAR(191)    NOT NULL,
+            cost_price     DECIMAL(10, 2)  NOT NULL,
+            effective_date DATE            NULL,
+            uploaded_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            uploaded_by    BIGINT UNSIGNED NOT NULL,
+            source         VARCHAR(20)     NOT NULL DEFAULT 'upload',
             PRIMARY KEY  (id),
-            KEY idx_product_id  (product_id),
-            KEY idx_sku         (sku),
-            KEY idx_uploaded_at (uploaded_at)
+            KEY idx_product_id     (product_id),
+            KEY idx_sku            (sku),
+            KEY idx_uploaded_at    (uploaded_at),
+            KEY idx_effective_date (effective_date)
         ) {$charset_collate};";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($sql);
+
+        // Backfill legacy rows: before this version the "valid from" date was implicit in
+        // uploaded_at, so seed effective_date from it. Idempotent.
+        $wpdb->query(
+            "UPDATE {$table_name} SET effective_date = DATE(uploaded_at) WHERE effective_date IS NULL"
+        );
     }
 
     /**
@@ -53,14 +65,15 @@ class TRM_Cost_Price_DB
             $result = $wpdb->insert(
                 $table_name,
                 [
-                    'product_id'  => $row['product_id'],
-                    'sku'         => $row['sku'],
-                    'cost_price'  => $row['cost_price'],
-                    'uploaded_at' => current_time('mysql'),
-                    'uploaded_by' => $uploaded_by,
-                    'source'      => 'upload',
+                    'product_id'     => $row['product_id'],
+                    'sku'            => $row['sku'],
+                    'cost_price'     => $row['cost_price'],
+                    'effective_date' => current_time('Y-m-d'),
+                    'uploaded_at'    => current_time('mysql'),
+                    'uploaded_by'    => $uploaded_by,
+                    'source'         => 'upload',
                 ],
-                ['%d', '%s', '%f', '%s', '%d', '%s']
+                ['%d', '%s', '%f', '%s', '%s', '%d', '%s']
             );
 
             if ($result !== false) {
@@ -87,12 +100,16 @@ class TRM_Cost_Price_DB
 
         $table_name = self::table_name();
         $now        = current_time('mysql');
+        $today      = current_time('Y-m-d');
         $latest     = self::get_current_price($product_id);
 
-        // Collapse a prior inline edit from within the last hour into this one.
+        // Collapse a prior inline edit from within the last hour into this one. Only a
+        // today-effective inline row qualifies — a backdated ('manual') correction is
+        // never overwritten by a "set current price" edit.
         if (
             $latest
             && $latest->source === 'inline'
+            && $latest->effective_date === $today
             && (strtotime($now) - strtotime($latest->uploaded_at)) < HOUR_IN_SECONDS
         ) {
             $wpdb->update(
@@ -113,21 +130,115 @@ class TRM_Cost_Price_DB
         $wpdb->insert(
             $table_name,
             [
-                'product_id'  => $product_id,
-                'sku'         => $sku,
-                'cost_price'  => $cost_price,
-                'uploaded_at' => $now,
-                'uploaded_by' => $user_id,
-                'source'      => 'inline',
+                'product_id'     => $product_id,
+                'sku'            => $sku,
+                'cost_price'     => $cost_price,
+                'effective_date' => $today,
+                'uploaded_at'    => $now,
+                'uploaded_by'    => $user_id,
+                'source'         => 'inline',
             ],
-            ['%d', '%s', '%f', '%s', '%d', '%s']
+            ['%d', '%s', '%f', '%s', '%s', '%d', '%s']
         );
 
         return self::get_current_price($product_id);
     }
 
     /**
-     * Get the most recent cost price record for a product.
+     * Insert a cost price valid from a specific (typically past) date — the backdated
+     * correction path. Append-only; tagged source='manual' so it is never collapsed by
+     * the inline "set current price" edit.
+     *
+     * @return object|null The inserted row, or null on failure. (The product's *current*
+     *                     price may be a different, later-dated row — fetch it separately.)
+     */
+    public static function insert_dated_price(
+        int    $product_id,
+        string $sku,
+        float  $cost_price,
+        string $effective_date,
+        int    $user_id
+    ): ?object {
+        global $wpdb;
+
+        $result = $wpdb->insert(
+            self::table_name(),
+            [
+                'product_id'     => $product_id,
+                'sku'            => $sku,
+                'cost_price'     => $cost_price,
+                'effective_date' => $effective_date,
+                'uploaded_at'    => current_time('mysql'),
+                'uploaded_by'    => $user_id,
+                'source'         => 'manual',
+            ],
+            ['%d', '%s', '%f', '%s', '%s', '%d', '%s']
+        );
+
+        if ($result === false) {
+            return null;
+        }
+
+        return self::get_row((int) $wpdb->insert_id);
+    }
+
+    /**
+     * Fetch a single history row by id.
+     */
+    public static function get_row(int $id): ?object
+    {
+        global $wpdb;
+
+        $table_name = self::table_name();
+        $row        = $wpdb->get_row(
+            $wpdb->prepare("SELECT * FROM {$table_name} WHERE id = %d", $id)
+        );
+
+        return $row ?: null;
+    }
+
+    /**
+     * Update the cost price and/or effective date of an existing history row.
+     * uploaded_at (the audit "recorded on" timestamp) is intentionally left untouched.
+     *
+     * @return bool True if a row was updated.
+     */
+    public static function update_row(int $id, float $cost_price, string $effective_date): bool
+    {
+        global $wpdb;
+
+        $result = $wpdb->update(
+            self::table_name(),
+            [
+                'cost_price'     => $cost_price,
+                'effective_date' => $effective_date,
+            ],
+            ['id' => $id],
+            ['%f', '%s'],
+            ['%d']
+        );
+
+        return $result !== false;
+    }
+
+    /**
+     * Delete a single history row.
+     *
+     * @return bool True if a row was deleted.
+     */
+    public static function delete_row(int $id): bool
+    {
+        global $wpdb;
+
+        return (bool) $wpdb->delete(self::table_name(), ['id' => $id], ['%d']);
+    }
+
+    /**
+     * Get the cost price currently in effect for a product: the row with the latest
+     * effective_date on or before today, breaking ties on id (last recorded wins).
+     *
+     * Note: this is NOT "the newest row" — a backdated correction has a higher id but an
+     * earlier effective_date, so it must not be treated as current.
      */
     public static function get_current_price(int $product_id): ?object
     {
@@ -136,7 +247,10 @@ class TRM_Cost_Price_DB
         $table_name = self::table_name();
         $row        = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT * FROM {$table_name} WHERE product_id = %d ORDER BY id DESC LIMIT 1",
+                "SELECT * FROM {$table_name}
+                 WHERE product_id = %d AND effective_date <= CURDATE()
+                 ORDER BY effective_date DESC, id DESC
+                 LIMIT 1",
                 $product_id
             )
         );
@@ -155,7 +269,7 @@ class TRM_Cost_Price_DB
 
         return $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT * FROM {$table_name} WHERE product_id = %d ORDER BY id DESC",
+                "SELECT * FROM {$table_name} WHERE product_id = %d ORDER BY effective_date DESC, id DESC",
                 $product_id
             )
         ) ?: [];
@@ -172,21 +286,25 @@ class TRM_Cost_Price_DB
         $table_name = self::table_name();
         $offset     = ($page - 1) * $per_page;
 
+        // "Current" = the row per product with the greatest effective_date on/before today
+        // (id as tie-break). Expressed as a greatest-n-per-group anti-join so it works
+        // without window functions (MariaDB / MySQL 5.7 compatible).
         return $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT p.ID, p.post_title, latest.sku, latest.cost_price, latest.uploaded_at, latest.uploaded_by
+                "SELECT p.ID, p.post_title, cur.sku, cur.cost_price,
+                        cur.effective_date, cur.uploaded_at, cur.uploaded_by
                 FROM {$wpdb->posts} p
-                INNER JOIN (
-                    SELECT product_id, sku, cost_price, uploaded_at, uploaded_by
-                    FROM {$table_name}
-                    WHERE id IN (
-                        SELECT MAX(id)
-                        FROM {$table_name}
-                        GROUP BY product_id
-                    )
-                ) AS latest ON latest.product_id = p.ID
+                INNER JOIN {$table_name} cur
+                        ON cur.product_id = p.ID
+                       AND cur.effective_date <= CURDATE()
+                LEFT  JOIN {$table_name} newer
+                        ON newer.product_id = cur.product_id
+                       AND newer.effective_date <= CURDATE()
+                       AND (newer.effective_date > cur.effective_date
+                            OR (newer.effective_date = cur.effective_date AND newer.id > cur.id))
                 WHERE p.post_type = 'product'
                   AND p.post_status = 'publish'
+                  AND newer.id IS NULL
                 ORDER BY p.post_title ASC
                 LIMIT %d OFFSET %d",
                 $per_page,
@@ -205,7 +323,7 @@ class TRM_Cost_Price_DB
         $table_name = self::table_name();
 
         return (int) $wpdb->get_var(
-            "SELECT COUNT(DISTINCT product_id) FROM {$table_name}"
+            "SELECT COUNT(DISTINCT product_id) FROM {$table_name} WHERE effective_date <= CURDATE()"
         );
     }
 
@@ -229,14 +347,16 @@ class TRM_Cost_Price_DB
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT product_id, cost_price
-                 FROM {$table_name}
-                 WHERE id IN (
-                     SELECT MAX(id)
-                     FROM {$table_name}
-                     WHERE product_id IN ({$placeholders})
-                     GROUP BY product_id
-                 )",
+                "SELECT cur.product_id, cur.cost_price
+                 FROM {$table_name} cur
+                 LEFT JOIN {$table_name} newer
+                        ON newer.product_id = cur.product_id
+                       AND newer.effective_date <= CURDATE()
+                       AND (newer.effective_date > cur.effective_date
+                            OR (newer.effective_date = cur.effective_date AND newer.id > cur.id))
+                 WHERE cur.product_id IN ({$placeholders})
+                   AND cur.effective_date <= CURDATE()
+                   AND newer.id IS NULL",
                 ...$product_ids
             )
         ) ?: [];
@@ -286,13 +406,15 @@ class TRM_Cost_Price_DB
 
         return $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT p.ID, p.post_title, latest.sku, latest.cost_price, latest.uploaded_at, latest.uploaded_by
+                "SELECT p.ID, p.post_title, latest.sku, latest.cost_price,
+                        latest.effective_date, latest.uploaded_at, latest.uploaded_by
                  FROM {$wpdb->posts} p
                  INNER JOIN (
-                     SELECT product_id, sku, cost_price, uploaded_at, uploaded_by
+                     SELECT product_id, sku, cost_price, effective_date, uploaded_at, uploaded_by
                      FROM {$table_name}
                      WHERE product_id = %d
-                     ORDER BY id DESC
+                       AND effective_date <= CURDATE()
+                     ORDER BY effective_date DESC, id DESC
                      LIMIT 1
                  ) AS latest ON latest.product_id = p.ID
                  WHERE p.post_type = 'product'",
@@ -323,7 +445,7 @@ class TRM_Cost_Price_DB
             $wpdb->prepare(
                 "SELECT * FROM {$table_name}
                  WHERE product_id IN ({$placeholders})
-                 ORDER BY product_id ASC, id DESC",
+                 ORDER BY product_id ASC, effective_date DESC, id DESC",
                 ...$product_ids
             )
         ) ?: [];

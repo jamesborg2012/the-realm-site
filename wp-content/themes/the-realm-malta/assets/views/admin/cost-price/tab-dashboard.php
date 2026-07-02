@@ -15,6 +15,7 @@
 $total_pages    = $total_products > 0 ? (int) ceil($total_products / $per_page) : 1;
 $is_search_mode = $sku_search !== '';
 $base_page_url  = admin_url('admin.php?page=trm-cost-price&tab=dashboard');
+$today          = current_time('Y-m-d');
 ?>
 
 <div class="trm-dashboard-header">
@@ -112,6 +113,16 @@ $base_page_url  = admin_url('admin.php?page=trm-cost-price&tab=dashboard');
                 $history_rows  = $history_map[$product_id] ?? [];
                 $history_count = count($history_rows);
                 $edit_link     = get_edit_post_link($product_id);
+
+                // The current row = first in the (effective_date DESC) history whose
+                // effective date is on or before today. Used to badge it in the panel.
+                $current_row_id = 0;
+                foreach ($history_rows as $hr) {
+                    if ($hr->effective_date <= $today) {
+                        $current_row_id = (int) $hr->id;
+                        break;
+                    }
+                }
             ?>
             <tr class="trm-product-row">
                 <td class="column-product">
@@ -143,32 +154,68 @@ $base_page_url  = admin_url('admin.php?page=trm-cost-price&tab=dashboard');
                     <span class="trm-cp-updated"><?php echo esc_html(date_i18n('d M Y H:i', strtotime($product->uploaded_at))); ?></span>
                 </td>
                 <td class="column-history">
-                    <?php if ($history_count <= 1) : ?>
-                        <span class="trm-no-history">No previous records</span>
-                    <?php else : ?>
-                        <details class="trm-history-details">
-                            <summary><?php echo esc_html($history_count - 1); ?> previous <?php echo ($history_count - 1) === 1 ? 'record' : 'records'; ?></summary>
-                            <table class="trm-history-table">
-                                <thead>
-                                    <tr>
-                                        <th>Cost Price</th>
-                                        <th>Date Set</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php
-                                    $past_rows = array_slice($history_rows, 1);
-                                    foreach ($past_rows as $hist_row) :
-                                    ?>
-                                    <tr>
-                                        <td>&euro;<?php echo esc_html(number_format((float) $hist_row->cost_price, 2)); ?></td>
-                                        <td><?php echo esc_html(date_i18n('d M Y H:i', strtotime($hist_row->uploaded_at))); ?></td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </details>
-                    <?php endif; ?>
+                    <details class="trm-history-details"
+                             data-product-id="<?php echo esc_attr($product_id); ?>"
+                             data-sku="<?php echo esc_attr($product->sku); ?>">
+                        <summary><?php echo esc_html($history_count); ?> <?php echo $history_count === 1 ? 'record' : 'records'; ?> &mdash; manage / backdate</summary>
+                        <table class="trm-history-table">
+                            <thead>
+                                <tr>
+                                    <th class="trm-hist-col-eff">Effective From</th>
+                                    <th class="trm-hist-col-price">Cost Price</th>
+                                    <th class="trm-hist-col-rec">Recorded</th>
+                                    <th class="trm-hist-col-act"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($history_rows as $hist_row) :
+                                    $rid        = (int) $hist_row->id;
+                                    $is_current = ($rid === $current_row_id);
+                                    $eff_val    = esc_attr($hist_row->effective_date);
+                                    $price_val  = esc_attr(number_format((float) $hist_row->cost_price, 2, '.', ''));
+                                ?>
+                                <tr class="trm-hist-row<?php echo $is_current ? ' is-current' : ''; ?>" data-row-id="<?php echo esc_attr($rid); ?>">
+                                    <td class="trm-hist-eff">
+                                        <span class="trm-hist-eff-disp"><?php echo esc_html(date_i18n('d M Y', strtotime($hist_row->effective_date))); ?></span>
+                                        <input type="date" class="trm-hist-eff-input" value="<?php echo $eff_val; ?>" max="<?php echo esc_attr($today); ?>" hidden>
+                                        <span class="trm-hist-current-badge">Current</span>
+                                    </td>
+                                    <td class="trm-hist-price">
+                                        &euro;<span class="trm-hist-price-disp"><?php echo esc_html(number_format((float) $hist_row->cost_price, 2)); ?></span>
+                                        <input type="number" step="0.01" min="0" inputmode="decimal" class="trm-hist-price-input small-text" value="<?php echo $price_val; ?>" hidden>
+                                    </td>
+                                    <td class="trm-hist-recorded">
+                                        <?php echo esc_html(date_i18n('d M Y H:i', strtotime($hist_row->uploaded_at))); ?>
+                                        <span class="trm-hist-source"><?php echo esc_html($hist_row->source); ?></span>
+                                    </td>
+                                    <td class="trm-hist-actions">
+                                        <button type="button" class="button-link trm-hist-edit">Edit</button>
+                                        <button type="button" class="button-link trm-hist-delete">Delete</button>
+                                        <button type="button" class="button button-small button-primary trm-hist-save" hidden>Save</button>
+                                        <button type="button" class="button button-small trm-hist-cancel" hidden>Cancel</button>
+                                        <span class="spinner trm-hist-spinner"></span>
+                                        <span class="trm-hist-error" hidden></span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+
+                        <div class="trm-add-dated">
+                            <strong>Add a cost price for a past date</strong>
+                            <span class="trm-add-fields">
+                                <label>&euro;
+                                    <input type="number" step="0.01" min="0" inputmode="decimal" class="trm-add-price small-text" placeholder="0.00">
+                                </label>
+                                <label>Valid from
+                                    <input type="date" class="trm-add-eff" max="<?php echo esc_attr($today); ?>">
+                                </label>
+                                <button type="button" class="button button-small trm-add-save">Add</button>
+                                <span class="spinner trm-add-spinner"></span>
+                            </span>
+                            <span class="trm-add-error" hidden></span>
+                        </div>
+                    </details>
                 </td>
             </tr>
             <?php endforeach; ?>
