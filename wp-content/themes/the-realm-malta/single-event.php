@@ -26,8 +26,21 @@ get_header(); ?>
 				$location = function_exists( 'get_field' ) ? get_field( 'event_location' ) : get_post_meta( $event_id, 'event_location', true );
 				$parts    = function_exists( 'get_field' ) ? get_field( 'event_participants' ) : get_post_meta( $event_id, 'event_participants', true );
 				$link     = function_exists( 'get_field' ) ? get_field( 'event_register_link' ) : get_post_meta( $event_id, 'event_register_link', true );
+				$show_timer = function_exists( 'get_field' ) ? (bool) get_field( 'event_show_timer' ) : (bool) get_post_meta( $event_id, 'event_show_timer', true );
 
 				$timestamp = $date ? strtotime( $date ) : false;
+
+				// Build the absolute countdown target (event date + start time) in the
+				// site timezone. The timer only shows when it's explicitly enabled, both
+				// date and time are set, and the event is still in the future.
+				$countdown_ts   = 0;
+				if ( $show_timer && $date && $time ) {
+					$countdown_dt = DateTime::createFromFormat( 'Y-m-d H:i', $date . ' ' . $time, wp_timezone() );
+					if ( $countdown_dt ) {
+						$countdown_ts = $countdown_dt->getTimestamp();
+					}
+				}
+				$show_countdown = $countdown_ts && $countdown_ts > time();
 				?>
 
 				<article id="post-<?php the_ID(); ?>" <?php post_class( 'trm-single-event' ); ?>>
@@ -94,14 +107,42 @@ get_header(); ?>
 						<?php endif; ?>
 					</ul>
 
-					<?php if ( $link ) : ?>
+					<?php if ( $link || $show_countdown ) : ?>
 						<div class="trm-single-event__cta">
-							<a href="<?php echo esc_url( $link ); ?>"
-							   class="button trm-single-event__register"
-							   target="_blank"
-							   rel="noopener noreferrer external nofollow">
-								<?php esc_html_e( 'Register for this event', 'the-realm-malta' ); ?>
-							</a>
+							<?php if ( $link ) : ?>
+								<a href="<?php echo esc_url( $link ); ?>"
+								   class="button trm-single-event__register"
+								   target="_blank"
+								   rel="noopener noreferrer external nofollow">
+									<?php esc_html_e( 'Register for this event', 'the-realm-malta' ); ?>
+								</a>
+							<?php endif; ?>
+
+							<?php if ( $show_countdown ) : ?>
+								<div class="trm-single-event__countdown"
+								     data-trm-countdown="<?php echo esc_attr( $countdown_ts * 1000 ); ?>"
+								     aria-live="polite">
+									<span class="trm-single-event__countdown-label"><?php esc_html_e( 'Event starts in', 'the-realm-malta' ); ?></span>
+									<div class="trm-single-event__countdown-units">
+										<span class="trm-countdown__unit">
+											<span class="trm-countdown__value" data-countdown-days>00</span>
+											<span class="trm-countdown__unit-label"><?php esc_html_e( 'Days', 'the-realm-malta' ); ?></span>
+										</span>
+										<span class="trm-countdown__unit">
+											<span class="trm-countdown__value" data-countdown-hours>00</span>
+											<span class="trm-countdown__unit-label"><?php esc_html_e( 'Hours', 'the-realm-malta' ); ?></span>
+										</span>
+										<span class="trm-countdown__unit">
+											<span class="trm-countdown__value" data-countdown-minutes>00</span>
+											<span class="trm-countdown__unit-label"><?php esc_html_e( 'Mins', 'the-realm-malta' ); ?></span>
+										</span>
+										<span class="trm-countdown__unit">
+											<span class="trm-countdown__value" data-countdown-seconds>00</span>
+											<span class="trm-countdown__unit-label"><?php esc_html_e( 'Secs', 'the-realm-malta' ); ?></span>
+										</span>
+									</div>
+								</div>
+							<?php endif; ?>
 						</div>
 					<?php endif; ?>
 

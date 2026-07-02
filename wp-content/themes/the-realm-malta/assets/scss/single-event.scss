@@ -101,9 +101,14 @@ body.single-event {
 
 	&__cta {
 		margin-bottom: 2rem;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		gap: 1.25rem 1.5rem;
 	}
 
 	&__register.button {
+		order: 2;
 		display: inline-block;
 		background: $trm-event-accent;
 		color: #fff;
@@ -118,4 +123,52 @@ body.single-event {
 			color: #fff;
 		}
 	}
+
+	&__countdown {
+		order: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	&__countdown-label {
+		font-size: 0.72rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: $trm-event-muted;
+	}
+
+	&__countdown-units {
+		display: flex;
+		gap: 0.5rem;
+	}
+}
+
+.trm-countdown__unit {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 3.25rem;
+	padding: 0.25rem 0.35rem;
+	background: #f4f8fb;
+	border: 1px solid #e0ebf2;
+	border-radius: 8px;
+}
+
+.trm-countdown__value {
+	font-size: 1.4rem;
+	font-weight: 700;
+	line-height: 1;
+	color: $trm-event-accent-dark;
+	font-variant-numeric: tabular-nums;
+}
+
+.trm-countdown__unit-label {
+	margin-top: 0.25rem;
+	font-size: 0.6rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: $trm-event-muted;
 }

@@ -697,6 +697,9 @@ body a {
 .site-footer .widget-title {
   margin-bottom: 0.35em;
 }
+.site-footer .widget {
+  margin-bottom: 0;
+}
 .site-footer .widget > ul,
 .site-footer .widget .menu,
 .site-footer .widget .textwidget {
@@ -1578,8 +1581,13 @@ body.single-event .widget-area {
 }
 .trm-single-event__cta {
   margin-bottom: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1.25rem 1.5rem;
 }
 .trm-single-event__register.button {
+  order: 2;
   display: inline-block;
   background: #0073aa;
   color: #fff;
@@ -1591,6 +1599,51 @@ body.single-event .widget-area {
 .trm-single-event__register.button:hover, .trm-single-event__register.button:focus {
   background: #005f8a;
   color: #fff;
+}
+.trm-single-event__countdown {
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.trm-single-event__countdown-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5a6b76;
+}
+.trm-single-event__countdown-units {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.trm-countdown__unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 3.25rem;
+  padding: 0.25rem 0.35rem;
+  background: #f4f8fb;
+  border: 1px solid #e0ebf2;
+  border-radius: 8px;
+}
+
+.trm-countdown__value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #005f8a;
+  font-variant-numeric: tabular-nums;
+}
+
+.trm-countdown__unit-label {
+  margin-top: 0.25rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5a6b76;
 }
 
 /* Header live-search dropdown — wraps the existing .woocommerce-product-search form.

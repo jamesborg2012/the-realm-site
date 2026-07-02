@@ -19,6 +19,10 @@
     margin-bottom: 0.35em;
   }
 
+  .widget {
+    margin-bottom: 0;
+  }
+
   /* Kill the browser-default top margin on the list/menu sitting directly under each heading. */
   .widget > ul,
   .widget .menu,

@@ -65,6 +65,15 @@ class TREM_Event_Fields
                     'return_format' => 'H:i',
                 ],
                 [
+                    'key'           => 'field_trem_event_show_timer',
+                    'label'         => __('Show Countdown Timer', 'the-realm-events-manager'),
+                    'name'          => 'event_show_timer',
+                    'type'          => 'true_false',
+                    'instructions'  => __('Display a live countdown to the event next to the Register button. Requires both the date and start time to be set; the timer disappears automatically once the event has started.', 'the-realm-events-manager'),
+                    'ui'            => 1,
+                    'default_value' => 0,
+                ],
+                [
                     'key'           => 'field_trem_event_participants',
                     'label'         => __('Number of Participants', 'the-realm-events-manager'),
                     'name'          => 'event_participants',

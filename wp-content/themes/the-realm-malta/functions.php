@@ -76,6 +76,11 @@ function trm_load_child_theme_scripts_styles()
         )
     ));
 
+    // Single event countdown timer (item 27) — only on single event pages.
+    if (is_singular('event')) {
+        wp_enqueue_script('trm-single-event-timer', get_stylesheet_directory_uri() . '/assets/js/single-event-timer.js', array(), time(), true);
+    }
+
     // Header live-search dropdown (powers woocommerce/product-searchform.php override).
     wp_enqueue_script('trm-live-search', get_stylesheet_directory_uri() . '/assets/js/live-search.js', array('jquery'), time(), true);
     wp_localize_script('trm-live-search', 'trmLiveSearch', array(
