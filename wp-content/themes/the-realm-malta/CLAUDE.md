@@ -138,6 +138,13 @@ Server-side flow:
 
 Token-gated. Validates the transient, **deletes it on use** (one-shot), then sets user meta `rmm_membership_status = 'review'`. The Realm Members Manager admin UI then surfaces these for review.
 
+### `TRM_Mega_Nav` — [classes/mega-nav.php](classes/mega-nav.php)
+
+Custom category off-canvas navigation (added in item 19; replaces Max Mega Menu). Removes `storefront_primary_navigation` and renders an **"All Categories"** pill in the lower header bar (`render_nav_trigger`, `storefront_header` @ 50) that opens a left drawer built live from the `product_cat` hierarchy — 3 levels, WooCommerce display-order, empty branches/Uncategorized skipped, cached in the transient `trm_mega_nav_tree_v2` (6h, flushed on category create/edit/delete). Also registers a `trm_main_menu` nav location rendered horizontally (`render_main_menu` @ 52). Drawer markup is rendered **once** at `wp_footer` (`render_drawer`) via [assets/views/nav/mega-nav.php](assets/views/nav/mega-nav.php); behaviour in [assets/js/trm-mega-nav.js](assets/js/trm-mega-nav.js) (desktop fly-out columns / mobile slide-over panes; open/close/overlay/scroll-lock/Esc); styles in [assets/scss/mega-nav.scss](assets/scss/mega-nav.scss).
+
+- **Drawer open hook:** every trigger is a `<button data-trm-nav-trigger aria-controls="trm-nav-drawer" aria-expanded="false">`. The JS binds via `querySelectorAll('[data-trm-nav-trigger]')` (already plural) and syncs `aria-expanded` across **all** triggers on open/close — so adding another trigger with that attribute needs **zero JS changes**. (`data-trm-nav-open` is a different, drawer-internal hook that opens sub-panes — don't confuse the two.)
+- **Persistent rail + mobile FAB (item 30):** `render_cat_rail()` (also `wp_footer`, front-end-only guard, reuses the cached tree — no second drawer/tree render) outputs ONE `.trm-cat-rail` > `.trm-cat-rail__btn` carrying the same `data-trm-nav-trigger` hook, so it opens the same drawer as the pill with no JS change. CSS (in `mega-nav.scss`) presents it as a mobile-first bottom-right **FAB** (lifted above Storefront's fixed handheld footer bar) and, at `min-width:768px`, a slim full-height **left rail** overlaying content (no layout shift). z-index `$trm-nav-z − 10` (99980) — above content, **below** the drawer/overlay so an open drawer covers it. The header pill is unchanged.
+
 ### `TRM_Cost_Price` + `TRM_Cost_Price_DB` + `TRM_Cost_Price_CSV` + `TRM_Cost_Price_Upload` — [classes/cost-price/](classes/cost-price/)
 
 Admin page: **WooCommerce → Cost Prices** (`trm-cost-price`, `manage_woocommerce`).

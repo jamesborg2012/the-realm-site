@@ -1070,6 +1070,69 @@ body.trm-nav-lock {
   color: #c8102e;
 }
 
+/* -- Persistent category trigger: mobile FAB (base) + desktop left rail ---- *
+ * One markup block (.trm-cat-rail > .trm-cat-rail__btn) rendered at wp_footer. It reuses the header
+ * pill's data-trm-nav-trigger hook, so it opens the SAME drawer with no extra JS. Stacking: it sits
+ * above page content but BELOW the drawer + overlay ($trm-nav-z), so an open drawer covers it. */
+.trm-cat-rail {
+  position: fixed;
+  z-index: 99980;
+  /* Mobile-first = floating action button, bottom-right, lifted above Storefront's fixed handheld
+   * footer bar (position:fixed; bottom:0; li height ~4.235801em) so the two never overlap. */
+  right: 16px;
+  bottom: calc(4.235801032em + 16px);
+  top: auto;
+  left: auto;
+  width: auto;
+  background: transparent;
+}
+
+.trm-cat-rail__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #c8102e;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  /* Visible focus ring that reads on any background: white inner ring + red outer ring. */
+}
+.trm-cat-rail__btn svg {
+  display: block;
+}
+.trm-cat-rail__btn:hover {
+  background: #a50d25;
+  color: #fff;
+}
+.trm-cat-rail__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 6px #c8102e, 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+/* Desktop (>=768px): promote the FAB into a slim full-height left rail overlaying content. */
+@media screen and (min-width: 768px) {
+  .trm-cat-rail {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: auto;
+    display: flex;
+    justify-content: center;
+    width: 56px;
+    background: #fff;
+    border-right: 1px solid #ececec;
+  }
+  .trm-cat-rail__btn {
+    /* Pinned near the top, offset down so it clears the two-bar header at scroll-top. */
+    margin-top: 50px;
+  }
+}
 /* -- Desktop: side-by-side fly-out columns (no slide-over) ---------------- */
 @media screen and (min-width: 769px) {
   /* Panel widens to fit only the columns currently in play (set by JS via has-l2/has-l3). */

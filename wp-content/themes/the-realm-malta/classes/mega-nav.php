@@ -40,6 +40,11 @@ class TRM_Mega_Nav extends TRM_Core
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_footer', [$this, 'render_drawer']);
 
+        // Persistent, always-reachable trigger (desktop left rail / mobile FAB) that opens the SAME
+        // drawer as the header pill. Rendered at wp_footer so the fixed overlay element lives at the
+        // end of the DOM rather than in the header flow.
+        add_action('wp_footer', [$this, 'render_cat_rail']);
+
         // Keep the cached tree fresh when categories change.
         foreach (['created_product_cat', 'edited_product_cat', 'delete_product_cat'] as $hook) {
             add_action($hook, [$this, 'flush_cache']);
@@ -149,6 +154,39 @@ class TRM_Mega_Nav extends TRM_Core
         }
 
         echo $this->render_template('nav/mega-nav', ['tree' => $tree]);
+    }
+
+    /**
+     * Render the persistent category trigger — a desktop left-edge rail and a mobile FAB (one markup
+     * block; CSS in mega-nav.scss switches presentation by breakpoint). It carries the SAME
+     * `data-trm-nav-trigger` hook + `aria-controls` as the header pill, so trm-mega-nav.js binds and
+     * aria-syncs it automatically with no JS changes — it opens the one existing drawer instance.
+     *
+     * Does NOT re-render the drawer or the category tree (the drawer is rendered once by
+     * render_drawer(); get_category_tree() here is a transient read, not a rebuild).
+     *
+     * Hook: wp_footer
+     *
+     * @return void
+     */
+    public function render_cat_rail()
+    {
+        // Front-end only, and nothing to open if there are no categories (matches the pill's guard).
+        if (is_admin() || empty($this->get_category_tree())) {
+            return;
+        }
+
+        printf(
+            '<div class="trm-cat-rail">'
+                . '<button type="button" class="trm-cat-rail__btn" data-trm-nav-trigger'
+                . ' aria-controls="trm-nav-drawer" aria-expanded="false">'
+                . '<span class="trm-cat-rail__icon" aria-hidden="true">%1$s</span>'
+                . '<span class="screen-reader-text">%2$s</span>'
+                . '</button>'
+                . '</div>',
+            $this->hamburger_icon_svg(),
+            esc_html__('Open categories menu', 'the-realm-malta')
+        );
     }
 
     /**
