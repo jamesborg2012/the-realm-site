@@ -19,8 +19,9 @@ if (! defined('ABSPATH')) exit;
 class TREM_Event_Fields
 {
 
-    const KEY_DATE = 'field_trem_event_date';
-    const KEY_TIME = 'field_trem_event_time';
+    const KEY_DATE  = 'field_trem_event_date';
+    const KEY_TIME  = 'field_trem_event_time';
+    const KEY_SEATS = 'field_trem_event_seats_taken';
 
     public static function init()
     {
@@ -31,6 +32,11 @@ class TREM_Event_Fields
         add_filter('acf/load_value/key=' . self::KEY_DATE, [__CLASS__, 'load_date'], 10, 3);
         add_filter('acf/update_value/key=' . self::KEY_TIME, [__CLASS__, 'update_time'], 10, 3);
         add_filter('acf/load_value/key=' . self::KEY_TIME, [__CLASS__, 'load_time'], 10, 3);
+
+        // "Seats Taken" is derived, never stored: populate it live from the
+        // registrations table on load. The field is disabled in the UI (not
+        // POSTed), so there is deliberately no matching update_value filter.
+        add_filter('acf/load_value/key=' . self::KEY_SEATS, [__CLASS__, 'load_seats_taken'], 10, 3);
     }
 
     /**
@@ -93,7 +99,34 @@ class TREM_Event_Fields
                     'label'         => __('External Link to Register', 'the-realm-events-manager'),
                     'name'          => 'event_register_link',
                     'type'          => 'url',
+                    'instructions'  => __('Ignored when "Enable Website Registration?" is on — on-site registration is used instead.', 'the-realm-events-manager'),
                     'placeholder'   => __('https://example.com/register', 'the-realm-events-manager'),
+                ],
+                [
+                    'key'           => 'field_trem_event_enable_website_registration',
+                    'label'         => __('Enable Website Registration?', 'the-realm-events-manager'),
+                    'name'          => 'event_enable_website_registration',
+                    'type'          => 'true_false',
+                    'instructions'  => __('Handle registration on this site instead of the external link. Shoppers book a seat through a form on the event page; seats are capped by "Number of Participants" and the roster appears below the editor.', 'the-realm-events-manager'),
+                    'ui'            => 1,
+                    'default_value' => 0,
+                ],
+                [
+                    'key'               => self::KEY_SEATS,
+                    'label'             => __('Seats Taken', 'the-realm-events-manager'),
+                    'name'              => 'event_seats_taken',
+                    'type'              => 'number',
+                    'instructions'      => __('Read-only — live count of registrations booked for this event.', 'the-realm-events-manager'),
+                    'disabled'          => 1,
+                    'conditional_logic' => [
+                        [
+                            [
+                                'field'    => 'field_trem_event_enable_website_registration',
+                                'operator' => '==',
+                                'value'    => '1',
+                            ],
+                        ],
+                    ],
                 ],
                 [
                     'key'           => 'field_trem_event_banner',
@@ -187,5 +220,24 @@ class TREM_Event_Fields
                 : sprintf('%02d:%02d', $h, $i);
         }
         return $value;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Seats Taken: derived from the registrations table, never stored.    */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Return the live seat count for the current event. $post_id is the numeric
+     * event post ID for this field group.
+     */
+    public static function load_seats_taken($value, $post_id, $field)
+    {
+        $event_id = is_numeric($post_id) ? (int) $post_id : 0;
+
+        if ($event_id > 0 && class_exists('TREM_Event_Registrations')) {
+            return TREM_Event_Registrations::seats_taken($event_id);
+        }
+
+        return 0;
     }
 }
