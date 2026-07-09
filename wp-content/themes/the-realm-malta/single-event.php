@@ -41,6 +41,26 @@ get_header(); ?>
 					}
 				}
 				$show_countdown = $countdown_ts && $countdown_ts > time();
+
+				// On-site registration (item 29). When enabled, the external
+				// register link is ignored entirely: shoppers register through a
+				// modal form, gated by live seat availability. Falls back to the
+				// external-link behaviour if the events plugin is unavailable.
+				$reg_enabled = function_exists( 'get_field' )
+					? (bool) get_field( 'event_enable_website_registration' )
+					: (bool) get_post_meta( $event_id, 'event_enable_website_registration', true );
+
+				$reg_seats_remaining = 0;
+				$reg_available       = false;
+				if ( $reg_enabled ) {
+					if ( class_exists( 'TREM_Event_Registrations' ) ) {
+						$reg_seats_remaining = TREM_Event_Registrations::seats_available_remaining( $event_id );
+						$reg_available       = $reg_seats_remaining > 0;
+					} else {
+						// Registration back-end missing — degrade to external link.
+						$reg_enabled = false;
+					}
+				}
 				?>
 
 				<article id="post-<?php the_ID(); ?>" <?php post_class( 'trm-single-event' ); ?>>
@@ -107,9 +127,21 @@ get_header(); ?>
 						<?php endif; ?>
 					</ul>
 
-					<?php if ( $link || $show_countdown ) : ?>
+					<?php if ( $reg_enabled || $link || $show_countdown ) : ?>
 						<div class="trm-single-event__cta">
-							<?php if ( $link ) : ?>
+							<?php if ( $reg_enabled ) : ?>
+								<?php if ( $reg_available ) : ?>
+									<button type="button"
+									        class="button trm-single-event__register trm-event-reg__trigger"
+									        data-trm-reg-trigger
+									        aria-haspopup="dialog"
+									        aria-controls="trm-event-reg-modal">
+										<?php esc_html_e( 'Register for this event', 'the-realm-malta' ); ?>
+									</button>
+								<?php else : ?>
+									<h3 class="trm-single-event__fully-booked"><?php esc_html_e( 'Event is Fully Booked', 'the-realm-malta' ); ?></h3>
+								<?php endif; ?>
+							<?php elseif ( $link ) : ?>
 								<a href="<?php echo esc_url( $link ); ?>"
 								   class="button trm-single-event__register"
 								   target="_blank"
@@ -143,6 +175,45 @@ get_header(); ?>
 									</div>
 								</div>
 							<?php endif; ?>
+						</div>
+					<?php endif; ?>
+
+					<?php if ( $reg_enabled && $reg_available ) : ?>
+						<div class="trm-event-reg__overlay" data-trm-reg-overlay hidden>
+							<div class="trm-event-reg__modal"
+							     id="trm-event-reg-modal"
+							     role="dialog"
+							     aria-modal="true"
+							     aria-labelledby="trm-event-reg-title"
+							     data-event-id="<?php echo esc_attr( $event_id ); ?>">
+								<button type="button" class="trm-event-reg__close" data-trm-reg-close aria-label="<?php esc_attr_e( 'Close', 'the-realm-malta' ); ?>">&times;</button>
+								<h2 id="trm-event-reg-title" class="trm-event-reg__title"><?php esc_html_e( 'Register for this event', 'the-realm-malta' ); ?></h2>
+
+								<form class="trm-event-reg__form" data-trm-reg-form novalidate>
+									<p class="trm-event-reg__field">
+										<label for="trm-event-reg-first"><?php esc_html_e( 'First Name', 'the-realm-malta' ); ?> <span class="trm-event-reg__required" aria-hidden="true">*</span></label>
+										<input type="text" id="trm-event-reg-first" name="first_name" required aria-required="true" autocomplete="given-name">
+									</p>
+									<p class="trm-event-reg__field">
+										<label for="trm-event-reg-last"><?php esc_html_e( 'Surname', 'the-realm-malta' ); ?> <span class="trm-event-reg__required" aria-hidden="true">*</span></label>
+										<input type="text" id="trm-event-reg-last" name="last_name" required aria-required="true" autocomplete="family-name">
+									</p>
+									<p class="trm-event-reg__field">
+										<label for="trm-event-reg-phone"><?php esc_html_e( 'Phone', 'the-realm-malta' ); ?></label>
+										<input type="tel" id="trm-event-reg-phone" name="phone" autocomplete="tel">
+									</p>
+									<p class="trm-event-reg__field">
+										<label for="trm-event-reg-email"><?php esc_html_e( 'Email', 'the-realm-malta' ); ?> <span class="trm-event-reg__required" aria-hidden="true">*</span></label>
+										<input type="email" id="trm-event-reg-email" name="email" required aria-required="true" autocomplete="email">
+									</p>
+
+									<p class="trm-event-reg__message" data-trm-reg-message role="alert" aria-live="assertive" hidden></p>
+
+									<div class="trm-event-reg__actions">
+										<button type="submit" class="button trm-event-reg__submit" data-trm-reg-submit><?php esc_html_e( 'Book my seat', 'the-realm-malta' ); ?></button>
+									</div>
+								</form>
+							</div>
 						</div>
 					<?php endif; ?>
 

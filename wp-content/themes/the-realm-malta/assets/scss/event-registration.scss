@@ -1,0 +1,144 @@
+/* === On-site event registration (item 29) === */
+
+$trm-reg-accent: #0073aa;
+$trm-reg-accent-dark: #005f8a;
+$trm-reg-error: #c8102e;
+$trm-reg-success: #1a7f37;
+
+/* "Fully booked" replaces the register control. */
+.trm-single-event__fully-booked {
+	margin: 0;
+	padding: 0.6em 1.1em;
+	background: #f2f4f6;
+	border-radius: 6px;
+	color: #5a6b76;
+	font-size: 1.15em;
+}
+
+/* Inline confirmation after a successful booking. */
+.trm-single-event__registered {
+	margin: 0;
+	padding: 0.75em 1.1em;
+	background: rgba($trm-reg-success, 0.1);
+	border: 1px solid rgba($trm-reg-success, 0.4);
+	border-radius: 6px;
+	color: $trm-reg-success;
+	font-weight: 600;
+}
+
+/* Modal overlay + dialog. */
+.trm-event-reg__overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding: 5vh 1rem;
+	overflow-y: auto;
+	background: rgba(0, 0, 0, 0.55);
+
+	&[hidden] {
+		display: none;
+	}
+}
+
+.trm-event-reg__modal {
+	position: relative;
+	width: 100%;
+	max-width: 460px;
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+	padding: 1.75rem 1.75rem 1.5rem;
+}
+
+.trm-event-reg__close {
+	position: absolute;
+	top: 0.5rem;
+	right: 0.75rem;
+	width: 2rem;
+	height: 2rem;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: #5a6b76;
+	font-size: 1.75rem;
+	line-height: 1;
+	cursor: pointer;
+
+	&:hover,
+	&:focus {
+		color: $trm-reg-error;
+	}
+}
+
+.trm-event-reg__title {
+	margin: 0 0 1rem;
+	font-size: 1.4rem;
+}
+
+.trm-event-reg__field {
+	margin: 0 0 0.9rem;
+
+	label {
+		display: block;
+		margin-bottom: 0.3rem;
+		font-weight: 600;
+	}
+
+	input {
+		width: 100%;
+		box-sizing: border-box;
+	}
+}
+
+.trm-event-reg__required {
+	color: $trm-reg-error;
+}
+
+.trm-event-reg__message {
+	margin: 0 0 1rem;
+	padding: 0.6em 0.8em;
+	border-radius: 5px;
+	font-size: 0.95em;
+
+	&[hidden] {
+		display: none;
+	}
+
+	&.is-error {
+		background: rgba($trm-reg-error, 0.1);
+		border: 1px solid rgba($trm-reg-error, 0.4);
+		color: $trm-reg-error;
+	}
+
+	&.is-success {
+		background: rgba($trm-reg-success, 0.1);
+		border: 1px solid rgba($trm-reg-success, 0.4);
+		color: $trm-reg-success;
+	}
+}
+
+.trm-event-reg__actions {
+	margin-top: 0.5rem;
+}
+
+.trm-event-reg__submit {
+	background: $trm-reg-accent;
+
+	&:hover,
+	&:focus {
+		background: $trm-reg-accent-dark;
+	}
+
+	&[disabled] {
+		opacity: 0.6;
+		cursor: default;
+	}
+}
+
+/* Lock background scroll while the modal is open. */
+body.trm-event-reg-open {
+	overflow: hidden;
+}

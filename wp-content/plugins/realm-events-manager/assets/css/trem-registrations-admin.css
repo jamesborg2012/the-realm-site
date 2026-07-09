@@ -1,0 +1,38 @@
+/* Event registrations admin table (meta box on the event edit screen). */
+
+.trem-reg-admin__summary {
+	font-size: 13px;
+	margin: 0 0 10px;
+}
+
+.trem-reg-admin__table {
+	margin-top: 4px;
+}
+
+.trem-reg-admin__table th,
+.trem-reg-admin__table td {
+	vertical-align: middle;
+}
+
+.trem-reg-admin__input {
+	width: 100%;
+	max-width: 220px;
+	box-sizing: border-box;
+}
+
+.trem-reg-admin__actions {
+	white-space: nowrap;
+}
+
+.trem-reg-admin__actions .button {
+	margin-right: 2px;
+}
+
+.trem-reg-admin__row.is-editing {
+	background: #fffbe5;
+}
+
+.trem-reg-admin__empty td {
+	color: #666;
+	font-style: italic;
+}

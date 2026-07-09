@@ -35,6 +35,12 @@ class TREM_Plugin
 
         // "Upcoming Events" agenda ACF block
         TREM_Block_Upcoming_Events::init();
+
+        // On-site event registration: table self-heal, front-end submit AJAX,
+        // and the admin registrations manager (meta box + edit/delete AJAX).
+        TREM_Event_Registrations::init();
+        TREM_Registration_Ajax::init();
+        TREM_Registrations_Admin::init();
     }
 
     private function load_dependencies()
