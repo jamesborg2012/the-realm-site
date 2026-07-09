@@ -81,6 +81,12 @@ class TRM_WC_Hooks extends TRM_Core
         // Exclude products without a price from frontend queries (e.g., product archives and Query Loop)
         add_action('pre_get_posts', [$this, 'exclude_products_without_price'], 99);
 
+        // Category archives only: show in-stock products before On Order ones and restrict the pool to
+        // managed, in-stock/on-backorder products. Priority 99 so it runs AFTER WooCommerce's own
+        // catalogue-ordering posts_clauses (prio 10) and can prepend the stock CASE to its ORDER BY.
+        // Layers on top of the two pre_get_posts gates above (no-price + Coming Soon), which still run.
+        add_filter('posts_clauses', [$this, 'order_category_archive_in_stock_first'], 99, 2);
+
         add_action('woocommerce_before_shop_loop', [$this, 'render_sub_category_filter'], 99);
 
         // Disable registration form on My Account page (custom registration is handled separately)
@@ -888,6 +894,74 @@ class TRM_WC_Hooks extends TRM_Core
         ];
 
         $q->set('meta_query', $meta_query);
+    }
+
+    /**
+     * On product category archives only: show in-stock products before On Order (backorder) ones, and
+     * restrict the visible pool to stock-managed products that are `instock` or `onbackorder` — hiding
+     * out-of-stock and any non-stock-managed products entirely.
+     *
+     * Implemented via posts_clauses (rather than pre_get_posts) so we can both add a WHERE and PREPEND
+     * a stock-status CASE to the ORDER BY as the primary sort key, leaving the shopper's chosen WC
+     * "Sort by" order as the secondary sort within each group.
+     *
+     * Registered at priority 99 so it runs AFTER WooCommerce's own catalogue-ordering posts_clauses
+     * (default priority 10) — by then $clauses['orderby'] already holds WC's ordering (e.g. the
+     * min_price / popularity / rating expressions), which we keep as the secondary sort.
+     *
+     * Layered on top of, not replacing, the two priority-99 pre_get_posts gates
+     * (exclude_products_without_price + TRM_Coming_Soon::exclude_coming_soon_from_catalog), which keep
+     * running on these archives.
+     *
+     * Coexistence with WC sorts that join wc_product_meta_lookup (price/popularity/rating): we join our
+     * OWN alias (trm_sml) and only ever reference that alias, so there's no collision with WC's
+     * un-aliased join and no duplicate rows (both joins are 1:1 on product_id).
+     *
+     * The pool guard requires the product's `_manage_stock = 'yes'` (postmeta, aliased trm_ms — the
+     * lookup table has no manage_stock column). Products always ship with manage-stock on here, so in
+     * practice this hides out-of-stock; the condition is kept explicit as a guard. For variable
+     * products this is the PARENT's `_manage_stock`, and stock_status is the lookup's aggregated parent
+     * status.
+     *
+     * Only literal, code-controlled values are placed into SQL (the status strings and 'yes'); no
+     * request data is interpolated. Table names come from $wpdb, never hard-coded prefixes.
+     *
+     * Hook: posts_clauses (priority 99)
+     *
+     * @param array<string,string> $clauses
+     * @param WP_Query $query
+     * @return array<string,string>
+     */
+    public function order_category_archive_in_stock_first($clauses, $query)
+    {
+        // Only the frontend main query for a product_cat archive. Leaves the shop, search, tag
+        // archives, Query Loop, secondary queries and every non-product_cat listing untouched.
+        if (is_admin() || !($query instanceof WP_Query) || !$query->is_main_query() || !$query->is_tax('product_cat')) {
+            return $clauses;
+        }
+
+        global $wpdb;
+
+        // Join our own alias of the WC product meta lookup (indexed stock_status) and postmeta for
+        // _manage_stock. Aliased so they can't collide with WC's own price/popularity/rating join.
+        $clauses['join'] .= " INNER JOIN {$wpdb->prefix}wc_product_meta_lookup AS trm_sml ON trm_sml.product_id = {$wpdb->posts}.ID";
+        $clauses['join'] .= " INNER JOIN {$wpdb->postmeta} AS trm_ms ON ( trm_ms.post_id = {$wpdb->posts}.ID AND trm_ms.meta_key = '_manage_stock' )";
+
+        // Pool: managed products that are in stock or on backorder only.
+        $clauses['where'] .= " AND trm_sml.stock_status IN ('instock','onbackorder') AND trm_ms.meta_value = 'yes'";
+
+        // Primary sort: in-stock (0) before on-order (1). Explicit CASE so intent survives any future
+        // stock-status label changes (never relies on 'instock' < 'onbackorder' collation accident).
+        $stock_case = "CASE WHEN trm_sml.stock_status = 'instock' THEN 0 ELSE 1 END ASC";
+
+        // Keep WC's chosen ordering as the secondary sort within each group; fall back to WC's default
+        // (menu_order then title) when no orderby was set.
+        $existing_orderby = trim((string)($clauses['orderby'] ?? ''));
+        $clauses['orderby'] = $existing_orderby !== ''
+            ? $stock_case . ', ' . $existing_orderby
+            : $stock_case . ", {$wpdb->posts}.menu_order ASC, {$wpdb->posts}.post_title ASC";
+
+        return $clauses;
     }
 
     function render_sub_category_filter()
