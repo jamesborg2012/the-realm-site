@@ -118,7 +118,72 @@ class RSS_Ajax
     }
 
     /**
-     * Resolve a scanned barcode to a product, capturing the live price.
+     * Whether the request is coming from the New Marketing Order screen (the
+     * shared view/JS pass `mode = 'marketing'`). Marketing orders are priced at
+     * cost with zero VAT rather than at the live retail price.
+     */
+    private function is_marketing_request(): bool
+    {
+        $mode = isset($_POST['mode']) ? sanitize_text_field(wp_unslash($_POST['mode'])) : '';
+
+        return $mode === 'marketing';
+    }
+
+    /**
+     * Whether the theme's cost-price system is available. Marketing orders depend
+     * on it (a plugin -> theme call that inverts the usual direction), so every
+     * caller guards on this before pricing a marketing line.
+     */
+    private function cost_price_available(): bool
+    {
+        return class_exists('TRM_Cost_Price_DB')
+            && method_exists('TRM_Cost_Price_DB', 'get_current_price');
+    }
+
+    /**
+     * Resolve a product's *current* cost price via the theme's cost-price system.
+     *
+     * Returns the recorded cost as a float, or null when no cost-price row exists
+     * for the product (or the system is unavailable). A stored 0.00 is a valid,
+     * chargeable price and is returned as 0.0 — only a missing row yields null, so
+     * callers must test with `=== null`, never a truthy check.
+     *
+     * The effective product id follows the rest of the system: for a variation,
+     * its own (variation) id; otherwise the product id.
+     *
+     * @return float|null
+     */
+    private function resolve_cost_price(int $product_id, int $variation_id = 0): ?float
+    {
+        if (!$this->cost_price_available()) {
+            return null;
+        }
+
+        $effective_id = $variation_id > 0 ? $variation_id : $product_id;
+        $row          = TRM_Cost_Price_DB::get_current_price($effective_id);
+
+        // No row at all -> the product has no cost price. Distinct from a row whose
+        // cost_price is 0.00, which is a real (free) cost and returns 0.0 below.
+        if ($row === null) {
+            return null;
+        }
+
+        return (float) $row->cost_price;
+    }
+
+    /**
+     * The variation id to key cost prices on when the resolved product is a
+     * variation (0 for simple/parent products).
+     */
+    private function cost_variation_id(WC_Product $product): int
+    {
+        return $product->is_type('variation') ? (int) $product->get_id() : 0;
+    }
+
+    /**
+     * Resolve a scanned barcode to a product, capturing the live price. In
+     * marketing mode the returned price is the product's cost price (zero-VAT),
+     * not the retail price, and a product with no cost price is rejected.
      */
     public function lookup_barcode(): void
     {
@@ -140,6 +205,32 @@ class RSS_Ajax
 
         if (!$product || !$product->is_purchasable()) {
             wp_send_json_error(['message' => __('Product is not available for sale.', 'rss')]);
+        }
+
+        // Marketing orders price every line at cost with zero VAT, so the lookup
+        // returns the cost price as the product's price (ex == incl == net cost).
+        if ($this->is_marketing_request()) {
+            if (!$this->cost_price_available()) {
+                wp_send_json_error(['message' => __('The cost-price system is unavailable, so marketing orders cannot be priced.', 'rss')]);
+            }
+
+            $cost = $this->resolve_cost_price((int) $product->get_id(), $this->cost_variation_id($product));
+
+            if ($cost === null) {
+                wp_send_json_error([
+                    'message' => sprintf(__('Cannot add %s — no cost price recorded.', 'rss'), $product->get_name()),
+                ]);
+            }
+
+            wp_send_json_success([
+                'product_id' => (int) $product->get_id(),
+                'name'       => $product->get_name(),
+                'sku'        => $product->get_sku(),
+                'price'      => $cost,
+                'price_excl' => $cost,
+                'price_incl' => $cost,
+                'price_html' => wc_price($cost),
+            ]);
         }
 
         // Price is read straight from the product so the line captures the latest price.
@@ -197,6 +288,12 @@ class RSS_Ajax
 
         if (mb_strlen($term) < 2) {
             wp_send_json_error(['message' => __('Enter at least 2 characters to search.', 'rss')]);
+        }
+
+        $is_marketing = $this->is_marketing_request();
+
+        if ($is_marketing && !$this->cost_price_available()) {
+            wp_send_json_error(['message' => __('The cost-price system is unavailable, so marketing orders cannot be priced.', 'rss')]);
         }
 
         global $wpdb;
@@ -262,7 +359,7 @@ class RSS_Ajax
                 continue;
             }
 
-            $results[] = [
+            $entry = [
                 'product_id'   => (int) $product->get_id(),
                 'name'         => $product->get_name(),
                 'sku'          => $product->get_sku(),
@@ -273,6 +370,27 @@ class RSS_Ajax
                 'stock_status' => $product->get_stock_status(),
                 'stock_qty'    => $product->get_stock_quantity(),
             ];
+
+            // Marketing mode: price at cost (zero-VAT). A product with no cost
+            // price is flagged so the client can show it but refuse to add it.
+            if ($is_marketing) {
+                $cost = $this->resolve_cost_price((int) $product->get_id(), $this->cost_variation_id($product));
+
+                if ($cost === null) {
+                    $entry['cost_missing'] = true;
+                    $entry['price']        = null;
+                    $entry['price_excl']   = null;
+                    $entry['price_incl']   = null;
+                    $entry['price_html']   = esc_html__('No cost price', 'rss');
+                } else {
+                    $entry['price']      = $cost;
+                    $entry['price_excl'] = $cost;
+                    $entry['price_incl'] = $cost;
+                    $entry['price_html'] = wc_price($cost);
+                }
+            }
+
+            $results[] = $entry;
         }
 
         if (empty($results)) {
@@ -319,9 +437,13 @@ class RSS_Ajax
      * prices). When $allow_discounts is false (marketing orders) every line is
      * charged at full price regardless of any discount the client sent.
      *
+     * When $is_marketing is true the line is instead priced at the product's
+     * current cost price with **zero VAT** (see below); a line whose product has
+     * no cost price aborts the whole order.
+     *
      * Dies with a JSON error if a product is no longer purchasable.
      */
-    private function add_items_to_order(WC_Order $order, array $items, bool $allow_discounts): void
+    private function add_items_to_order(WC_Order $order, array $items, bool $allow_discounts, bool $is_marketing = false): void
     {
         foreach ($items as $row) {
             $product_id = isset($row['product_id']) ? absint($row['product_id']) : 0;
@@ -336,6 +458,36 @@ class RSS_Ajax
                 wp_send_json_error([
                     'message' => sprintf(__('A product (ID %d) is no longer available for sale.', 'rss'), $product_id),
                 ]);
+            }
+
+            // Marketing line: charged at the recorded cost price with zero VAT.
+            // The cost price is re-resolved server-side (never trusting the client)
+            // and used verbatim as the net line total — no VAT added, none backed
+            // out. A missing cost price aborts the order (place_marketing_order
+            // pre-validates so this is a belt-and-braces guard).
+            if ($is_marketing) {
+                $cost = $this->resolve_cost_price((int) $product->get_id(), $this->cost_variation_id($product));
+
+                if ($cost === null) {
+                    wp_send_json_error([
+                        'message' => sprintf(__('Cannot place this marketing order — no cost price recorded for %s.', 'rss'), $product->get_name()),
+                    ]);
+                }
+
+                $line_total = round($cost * $qty, wc_get_price_decimals());
+
+                $item = new WC_Order_Item_Product();
+                $item->set_product($product);
+                $item->set_quantity($qty);
+                $item->set_subtotal($line_total);
+                $item->set_total($line_total);
+                // Zero VAT: empty the line's tax arrays (total_tax / subtotal_tax = 0).
+                // The caller then runs calculate_totals(false) so WooCommerce sums the
+                // stored line totals WITHOUT recomputing tax from the store rates — the
+                // net cost price is recorded verbatim and the order tax total stays 0.
+                $item->set_taxes([]);
+                $order->add_item($item);
+                continue;
             }
 
             // Per-line discount (a % or a fixed inclusive amount), recomputed
@@ -407,6 +559,34 @@ class RSS_Ajax
             wp_send_json_error(['message' => __('Add at least one product before placing the order.', 'rss')]);
         }
 
+        // Pre-flight: marketing orders are priced at cost with zero VAT, so every
+        // line must resolve to a purchasable product WITH a recorded cost price.
+        // Validate up front — before wc_create_order() — so a missing cost price
+        // (or an unavailable cost-price system) creates nothing at all.
+        if (!$this->cost_price_available()) {
+            wp_send_json_error(['message' => __('The cost-price system is unavailable, so marketing orders cannot be priced. No order was created.', 'rss')]);
+        }
+
+        foreach ($items as $row) {
+            $pid = isset($row['product_id']) ? absint($row['product_id']) : 0;
+            $qty = isset($row['qty']) ? max(1, absint($row['qty'])) : 0;
+
+            if (!$pid || !$qty) {
+                continue;
+            }
+
+            $product = wc_get_product($pid);
+            if (!$product || !$product->is_purchasable()) {
+                wp_send_json_error(['message' => sprintf(__('A product (ID %d) is no longer available for sale.', 'rss'), $pid)]);
+            }
+
+            if ($this->resolve_cost_price((int) $product->get_id(), $this->cost_variation_id($product)) === null) {
+                wp_send_json_error([
+                    'message' => sprintf(__('Cannot place this marketing order — no cost price recorded for %s.', 'rss'), $product->get_name()),
+                ]);
+            }
+        }
+
         $order = wc_create_order();
 
         if (is_wp_error($order)) {
@@ -426,7 +606,7 @@ class RSS_Ajax
         $order->set_billing_last_name($last);
         $order->set_billing_email($marketing_user->user_email);
 
-        $this->add_items_to_order($order, $items, false);
+        $this->add_items_to_order($order, $items, false, true);
 
         if (empty($order->get_items())) {
             wp_send_json_error(['message' => __('No valid products to add to the order.', 'rss')]);
@@ -447,7 +627,14 @@ class RSS_Ajax
         // customer's marketing role, which is already satisfied above.)
         $order->update_meta_data('trm_is_marketing_order', 'yes');
 
-        $order->calculate_totals(true);
+        // Zero VAT on marketing orders. Each line's taxes were emptied in
+        // add_items_to_order (total_tax = 0); calculate_totals(false) makes
+        // WooCommerce sum the stored line totals WITHOUT recomputing tax from the
+        // store rates. On this tax-inclusive store calculate_totals(true) would
+        // re-derive VAT from each product's tax class and silently alter the
+        // charge — so we deliberately pass false. Result: order tax total = 0 and
+        // order total = sum(cost_price x qty), matching the on-screen Total to Pay.
+        $order->calculate_totals(false);
         $order->set_date_paid(time());
         $order->save();
 

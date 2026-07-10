@@ -409,7 +409,10 @@
     $.post(rssData.ajaxUrl, {
       action: 'rss_lookup_barcode',
       nonce: rssData.nonce,
-      code: code
+      code: code,
+      // Marketing mode makes the server price the line at cost (zero-VAT) and
+      // reject products with no cost price.
+      mode: rssData.mode
     }).done(function (res) {
       if (!res.success) {
         $scanResult.text(res.data && res.data.message ? res.data.message : rssData.i18n.notFound)
@@ -463,7 +466,10 @@
     $.post(rssData.ajaxUrl, {
       action: 'rss_search_products',
       nonce: rssData.nonce,
-      term: term
+      term: term,
+      // In marketing mode results carry cost prices (and a cost_missing flag on
+      // products with no recorded cost price).
+      mode: rssData.mode
     }).done(function (res) {
       if (!res.success) {
         searchResults = []
@@ -506,11 +512,18 @@
       $li.append($('<span class="rss-result-name"/>').text(p.name))
       $li.append($('<span class="rss-result-meta"/>').text(meta.join(' · ')))
       $li.append($('<span class="rss-result-price"/>').html(p.price_html || money(p.price)))
-      $li.append(
-        $('<button type="button" class="button button-small rss-result-add"/>')
-          .text('Add')
-          .attr('data-index', i)
-      )
+
+      // Marketing mode: a product with no recorded cost price cannot be added.
+      // Disable its Add button and label it so staff get plain, visible feedback.
+      var $add = $('<button type="button" class="button button-small rss-result-add"/>')
+        .attr('data-index', i)
+      if (isMarketing && p.cost_missing) {
+        $li.addClass('rss-result-nocost')
+        $add.text('No cost price').prop('disabled', true)
+      } else {
+        $add.text('Add')
+      }
+      $li.append($add)
       $list.append($li)
     })
 
@@ -628,9 +641,12 @@
   $searchResults.on('click', '.rss-result-add', function () {
     var index = parseInt($(this).attr('data-index'), 10)
     var product = searchResults[index]
-    if (product) {
-      openModal(product)
+    if (!product) return
+    if (isMarketing && product.cost_missing) {
+      showFeedback('Cannot add ' + product.name + ' — no cost price recorded.')
+      return
     }
+    openModal(product)
   })
 
   $('#rss-modal-add').on('click', confirmModalAdd)

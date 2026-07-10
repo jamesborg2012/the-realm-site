@@ -2,7 +2,7 @@
 
 Custom plugin providing a **backend order-placing module** ("Sales System") so staff can ring up in-store sales without driving the front-end checkout. Member lookup, camera barcode scanning, member discounts, and one-click WooCommerce order creation.
 
-Header: `v0.1.0`, author James Borg. See the [project CLAUDE.md](../../../CLAUDE.md) for site-wide context.
+Header: `v0.3.0`, author James Borg. See the [project CLAUDE.md](../../../CLAUDE.md) for site-wide context.
 
 ## Hard dependency
 
@@ -48,8 +48,8 @@ The standard and marketing pages share one view (`new-order.php`) and one script
 | Action               | Purpose                                                                 |
 |----------------------|-------------------------------------------------------------------------|
 | `rss_verify_member`   | Resolve member number → name/surname/email/user_id + store discount %. Flags expired/inactive (no discount, but still loads details). |
-| `rss_lookup_barcode`  | Resolve a scanned code → product; captures the **live** `get_price()`.  |
-| `rss_search_products` | Manual product search (camera-free fallback) by name / SKU / barcode. Returns up to 25 **purchasable, in-stock** products (`is_in_stock()`, so backorder is included), **excluding the `online-only` product brand**. Each hit carries the same price fields as `rss_lookup_barcode` so a result feeds straight into the confirm modal. |
+| `rss_lookup_barcode`  | Resolve a scanned code → product; captures the **live** `get_price()`. In **marketing mode** (`mode = 'marketing'`) it instead returns the product's **cost price** as every price base and rejects a product with no cost price. |
+| `rss_search_products` | Manual product search (camera-free fallback) by name / SKU / barcode. Returns up to 25 **purchasable, in-stock** products (`is_in_stock()`, so backorder is included), **excluding the `online-only` product brand**. Each hit carries the same price fields as `rss_lookup_barcode` so a result feeds straight into the confirm modal. In **marketing mode** each hit's price is the **cost price**; a hit with no cost price is returned flagged `cost_missing` (the client shows it but disables Add). |
 | `rss_place_order`     | Validate inputs and create the WooCommerce order.                       |
 | `rss_place_marketing_order` | Create an **internal marketing order** — no member, no customer fields, no discounts. Attributed to the `realm.marketing` user, or the first user with the `marketing` role, else errors (no order created). |
 
@@ -64,11 +64,16 @@ The standard and marketing pages share one view (`new-order.php`) and one script
 
 ### Marketing order creation (`rss_place_marketing_order`)
 
-Same skeleton as `rss_place_order` (frozen prices, server-side recompute, completed + paid), but:
+Same skeleton as `rss_place_order` (server-side recompute, completed + paid), but:
 
 - **Customer** = resolved by `resolve_marketing_user()` (`realm.marketing` login → first `marketing`-role user → null). Null aborts the order with an error. Billing first/last/email are read from that account (display name fallback) since the page has no customer fields.
-- **No discounts:** the shared `add_items_to_order($order, $items, false)` charges every line at full price (line `total = subtotal`), ignoring any discount payload.
+- **Cost pricing + zero VAT (the defining behaviour).** Every line is charged at the product's **current cost price** (what The Realm paid the supplier), resolved server-side via the theme's `TRM_Cost_Price_DB::get_current_price()` — NOT `get_price()`. The cost is used **verbatim** as the net line total (`subtotal = total = cost × qty`) and **all tax is zeroed**: each `WC_Order_Item_Product` has `set_taxes([])` (line `total_tax`/`subtotal_tax` = 0) and the order calls **`calculate_totals(false)`** so WooCommerce sums the stored line totals **without** re-deriving VAT from the store's tax classes (which would add VAT on this tax-inclusive store). Result: **order tax total = 0, order total = Σ(cost × qty)**, identical to the on-screen "Total to Pay".
+  - Cost lookup keys on the **variation id** when the resolved product is a variation, else the product id (matches the rest of the system). A stored `0.00` is a **valid** cost (charged at €0); only a **missing row** (`get_current_price()` returns `null`) is "no cost price".
+  - **No cost price → hard error.** A product with no cost price is rejected on the lookup/search (`Cannot add {name} — no cost price recorded.`) so it never enters the cart. `place_marketing_order` **pre-validates every line before `wc_create_order()`** (so a missing cost creates nothing) and `add_items_to_order` re-checks as a guard. If the cost-price system is unavailable (`class_exists('TRM_Cost_Price_DB')` false) all adds are rejected and placement aborts.
+- **No discounts:** the shared `add_items_to_order($order, $items, $allow_discounts, $is_marketing)` is called with `false, true`; the marketing branch ignores discounts entirely and prices at cost.
 - **Marketing meta:** sets `_rss_marketing_order = 'yes'` and `trm_is_marketing_order = 'yes'` (the theme's `TRM_WC_Hooks::check_marketing_order()` only fires on checkout, which `wc_create_order()` bypasses — so we set it directly to stay inline with the marketing logic). Order-tracker exclusion is already satisfied because the customer carries the `marketing` role. Payment method title is "In-Store Sale (Marketing)".
+
+**Cross-component dependency (plugin → theme).** Marketing pricing calls the child theme's `TRM_Cost_Price_DB` (`get_current_price()`), inverting the usual theme→plugin direction. Guarded with `class_exists` + `method_exists`; if the theme/cost-price system is absent, marketing orders cannot be priced and are cleanly refused (the standard order flow is unaffected).
 
 ## Conventions
 
