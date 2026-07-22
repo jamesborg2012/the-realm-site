@@ -1560,6 +1560,124 @@ body.woocommerce-cart .cart-collaterals .cart_totals .checkout-button {
   color: #000;
 }
 
+/**
+ * New Releases carousel (item 32).
+ *
+ * The track is `ul.products.trm-new-releases__track`; Slick turns each `li.product` into a slide.
+ * WooCommerce/Storefront give `ul.products li.product` their own width + float for the shop grid —
+ * neutralised here so Slick controls slide width. Under infinite:false a short set (<= slidesToShow)
+ * renders left-aligned and Slick disables the arrows itself, so the CSS must not force fill/centre.
+ */
+.trm-new-releases {
+  margin: 0 0 2.5em;
+}
+.trm-new-releases__title {
+  margin: 0 0 1em;
+}
+.trm-new-releases__empty {
+  margin: 0;
+  font-style: italic;
+  opacity: 0.85;
+}
+.trm-new-releases__track {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.trm-new-releases__track:not(.slick-initialized) {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.trm-new-releases__track:not(.slick-initialized) > li.product {
+  flex: 0 0 auto;
+  width: calc(25% - 10px * 2);
+  margin: 0 10px;
+}
+.trm-new-releases__track .slick-track {
+  display: flex;
+  align-items: stretch;
+  margin-left: 0;
+}
+.trm-new-releases__track .slick-slide {
+  height: auto;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+.trm-new-releases__track .slick-slide.product,
+.trm-new-releases__track .slick-slide > li.product,
+.trm-new-releases__track .slick-slide .product {
+  width: auto !important;
+  margin: 0 !important;
+  float: none !important;
+  clear: none !important;
+}
+.trm-new-releases__track .trm-nr-thumb {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+.trm-new-releases .trm-nr-badge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 72px;
+  height: 72px;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.trm-new-releases .trm-nr-badge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #c8102e;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  z-index: 0;
+}
+.trm-new-releases .trm-nr-badge__label {
+  position: relative;
+  z-index: 1;
+  transform: translate(12px, 12px) rotate(-45deg);
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+.trm-new-releases .slick-prev,
+.trm-new-releases .slick-next {
+  width: 34px;
+  height: 34px;
+  z-index: 2;
+}
+.trm-new-releases .slick-prev:before,
+.trm-new-releases .slick-next:before {
+  color: #c8102e;
+  font-size: 28px;
+  opacity: 1;
+}
+.trm-new-releases .slick-prev.slick-disabled:before,
+.trm-new-releases .slick-next.slick-disabled:before {
+  opacity: 0.25;
+}
+.trm-new-releases .slick-prev:focus-visible,
+.trm-new-releases .slick-next:focus-visible {
+  outline: 2px solid #c8102e;
+  outline-offset: 2px;
+}
+.trm-new-releases .slick-prev {
+  left: -6px;
+}
+.trm-new-releases .slick-next {
+  right: -6px;
+}
+
 /* === Single Event page (event CPT) === */
 /* Full-width: override Storefront's default right-sidebar layout, which caps
    .content-area at ~74% even though the event template renders no widget area.

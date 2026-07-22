@@ -9,11 +9,17 @@ Child of **Storefront** (`Template: storefront` in [style.css](style.css)). Hold
 ```php
 new TRM_Marketing_Handler();
 new TRM_WC_Hooks();
+new TRM_Header_Hooks();
+new TRM_Mega_Nav();
+new TRM_Cart();
 new TRM_MB_Hooks();
 new TRM_ACF_Hooks();
 new TRM_AJAX_Hooks();
 new TRM_Cost_Price();
 new TRM_Profit_Analytics();
+new TRM_Coming_Soon();
+new TRM_Preorder();
+new TRM_New_Releases();
 new TRM_Core();
 ```
 
@@ -195,6 +201,26 @@ Admin page: **WooCommerce → Profit Analytics** (`trm-profit-analytics`, `manag
 - Cost-price-period binning: for each line item, finds the latest cost price whose **`effective_date`** is on or before the order date (not `uploaded_at` — so backdated prices bin correctly). Aggregation key = `product_id . '_' . cp_id`, so a product whose cost price changed mid-range will appear as multiple rows. `period_start` = `MAX(cp.effective_date, range_start)`; `period_end` = next CP change − 1s, or `range_end`. History is fetched ordered by `effective_date ASC, id ASC`.
 - Output sorted by product title ASC, then `period_start` ASC.
 
+### `TRM_Coming_Soon` — [classes/coming-soon/trm-coming-soon.php](classes/coming-soon/trm-coming-soon.php)
+
+Pre-order / "Coming Soon" handling. Settings picker (`trm_coming_soon_category`, term ID) under WC → Settings → General; a Meta Box **"Release Information"** panel with a single `trm_release_date` date field (`Y-m-d`); a single-product release-date line; a `pre_get_posts` (prio 99) gate hiding Coming Soon products from every listing except the Coming Soon archive; and a daily WP-Cron (`trm_remove_coming_soon_expired`, ~00:01 local) that strips the category once `trm_release_date <= today` (lexicographic string compare — **never** `CAST … AS DATE`).
+
+- **`trm_release_date` now allows past dates** (item 32): the `js_options.minDate => 0` restriction was removed so a mis-entered release date can be corrected after launch. Backdating a still-Coming-Soon product makes the next cron run strip the category (the `<= today` match). Storage format (`Y-m-d`) and everything else about the field is unchanged.
+- **WP-Cron lag limitation:** WP-Cron only fires on the first request after the scheduled time, so on a quiet Saturday morning with no traffic the Coming Soon category may not yet be stripped from that day's releases — which can leave the New Releases carousel empty on the week's most important day. There's no clean code fix; the real fix is a server-level cron hitting `wp-cron.php` (a hosting change). Do **not** work around it by relaxing the Coming Soon veto — that veto is load-bearing for deliberately delayed launches.
+
+### `TRM_New_Releases` — [classes/new-releases/trm-new-releases.php](classes/new-releases/trm-new-releases.php)
+
+"New Releases" carousel (item 32) — an ACF block surfacing every product released in the current release week, grouped by top-level game system. Extends `TRM_Core`.
+
+- **Block** `acf/new-releases-carousel` (category `trm-blocks`), one PHP-registered ACF field **Title** (group `group_trm_new_releases`, `block == acf/new-releases-carousel`) — **no acf-json**. `render_callback` → `render_block()` → includes [parts/blocks/block-new-releases-carousel.php](parts/blocks/block-new-releases-carousel.php); `enqueue_assets` → Slick + `assets/js/trm-new-releases.js`.
+- **Window** `[most recent Saturday … today]`, inclusive, in `wp_timezone()`. On a Saturday the start IS today (branches on ISO weekday `'6'`, not `modify('last saturday')`). Deliberately never extends into the future.
+- **Qualify:** `trm_release_date` in-window (meta_query `BETWEEN`, **`type => CHAR`** — never `DATE`), published, `_price` present, `product_visibility NOT IN (outofstock, exclude-from-catalog)` (= in stock or on backorder, catalogue-visible), and `product_cat NOT IN` the Coming Soon term (+children) when one is configured. Self-sufficient query (doesn't rely on the global `pre_get_posts` gates, which are redundant-but-harmless here).
+- **Ordering:** grouped by top-level `product_cat` ancestor (`get_ancestors`), groups in WooCommerce display order — the **same** ordering `TRM_Mega_Nav` uses (parent=0 terms by `order` termmeta then name, Uncategorized skipped → sorted last). Newest-first within a group (`post_date DESC, ID DESC` + PHP 8 stable `usort` on the category ordinal). Each product appears once (min ordinal across its trees).
+- **Display cap** option `trm_new_releases_max_products` (WC → Settings → General, section "The Realm — New Releases"): empty/0/non-numeric/negative → **20**, `> 50` → **50**. Applied after the sort. Query ceiling `QUERY_CEILING = 200` (`fields => ids`, `no_found_rows`); cap-trim and ceiling-hit are logged via `write_log()`.
+- **Cache:** transient **`trm_new_releases_ids`** = `{ window_start, ids }` (uncapped, sorted), 1h TTL. A stored `window_start` ≠ current → miss (self-invalidates on week roll-over; cap applied on read, never cached). Explicit `delete_transient` on `save_post_product`, `trashed_post`/`untrashed_post`/`deleted_post` (product only), `created_product_cat`/`edited_product_cat`/`delete_product_cat`, and `trm_remove_coming_soon_expired` (prio 99, after the cron strips categories).
+- **Cards** reuse `wc_get_template_part('content','product')` inside a hand-written `<ul class="products columns-4 trm-new-releases__track">` (the Slick track). Sets `$post` + `$product` globals per item (the `the_post` action doesn't fire on `setup_postdata`). Empty state renders **"No products released this week."** on front end AND editor.
+- **"New!" thumbnail badge:** a triangular bottom-right corner badge (`.trm-nr-badge`, clip-path triangle + rotated label) over each card's thumbnail. Injected by wrapping the loop thumbnail via `woocommerce_before_shop_loop_item_title` (prio 9 open `.trm-nr-thumb`, prio 11 badge + close) — **added and removed around this block's loop render only** (`open_thumb_wrap` / `render_thumb_badge`), so no other WooCommerce product loop is affected. Decorative (`aria-hidden`; the section already reads as "New Releases").
+
 ## WooCommerce template overrides
 
 In [woocommerce/](woocommerce/):
@@ -222,7 +248,9 @@ npm run compile:sass     # one-off
 npm run watch:sass       # dev
 ```
 
-Entry: [assets/scss/styles.scss](assets/scss/styles.scss) → uses `variables`, `font`, `general`, `mega-menu`, `wc-shop`, `wc-cart`, `wc-single-product`, `wc-product-cat`, `single-event`.
+Entry: [assets/scss/styles.scss](assets/scss/styles.scss) → uses `variables`, `font`, `general`, `header`, `footer`, `mega-nav`, `cart`, `wc-shop`, `wc-cart`, `wc-single-product`, `wc-product-cat`, `new-releases`, `single-event`, `event-registration`, `live-search`, `on-order`, `preorder`.
+
+Front-end JS of note: `assets/js/trm-new-releases.js` (New Releases carousel — Slick init on `.trm-new-releases__track`, guarded against double-init; enqueued by the block's `enqueue_assets`, not in `functions.php`).
 
 Admin CSS is hand-written (no SCSS): `assets/css/admin/admin.css`, `cost-price.css`, `profit-analytics.css`.
 

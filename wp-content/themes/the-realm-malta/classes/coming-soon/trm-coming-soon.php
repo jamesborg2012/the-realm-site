@@ -6,7 +6,8 @@
  * One self-contained feature spanning four concerns:
  *   1. An admin setting (WC → Settings → General) selecting which product_cat is the
  *      "Coming Soon" category — stored in option `trm_coming_soon_category` (term ID).
- *   2. A Meta Box "Release Date" field (`trm_release_date`) on products, restricted to today onward.
+ *   2. A Meta Box "Release Date" field (`trm_release_date`) on products (any date; past dates allowed
+ *      so a mis-entered release date can be corrected after launch — item 32).
  *   3. A single-product display of the release date (italic) under the price, only for
  *      products in the Coming Soon category ("To Be Announced" when the date is unset).
  *   4. Catalog logic: products carrying the Coming Soon category are hidden from every
@@ -116,7 +117,7 @@ class TRM_Coming_Soon extends TRM_Core
      * Register the "Release Information" Meta Box (a single date field, today onward).
      *
      * Mirrors the realm-events-manager `event_date` field convention: a jQuery UI datepicker
-     * that saves a `Y-m-d` string. `minDate => 0` blocks picking dates before today.
+     * that saves a `Y-m-d` string. Past dates are selectable (no minDate) — see item 32.
      *
      * Hook: rwmb_meta_boxes
      *
@@ -139,7 +140,9 @@ class TRM_Coming_Soon extends TRM_Core
                     'desc'       => __('For "Coming Soon" pre-order products. On this date the Coming Soon category is removed automatically.', 'the-realm-malta'),
                     'js_options' => [
                         'dateFormat' => 'yy-mm-dd',
-                        'minDate'    => 0,
+                        // No minDate: past dates are selectable so a wrongly-entered release date can be
+                        // corrected after launch (item 32). Backdating a still-Coming-Soon product means
+                        // the next cron run strips the category (remove_expired_coming_soon uses <= today).
                     ],
                 ],
             ],
