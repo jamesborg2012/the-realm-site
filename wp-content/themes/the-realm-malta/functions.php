@@ -13,7 +13,9 @@ require_once('classes/cost-price/trm-cost-price.php');
 require_once('classes/profit-analytics/trm-profit-analytics.php');
 require_once('classes/coming-soon/trm-coming-soon.php');
 require_once('classes/preorder/trm-preorder.php');
+require_once('classes/carousel/trm-carousel-block.php');
 require_once('classes/new-releases/trm-new-releases.php');
+require_once('classes/pre-orders/trm-pre-orders.php');
 
 new TRM_Marketing_Handler();
 new TRM_WC_Hooks();
@@ -28,6 +30,7 @@ new TRM_Profit_Analytics();
 new TRM_Coming_Soon();
 new TRM_Preorder();
 new TRM_New_Releases();
+new TRM_Pre_Orders();
 new TRM_Core();
 
 function trm_load_parent_stylesheets()

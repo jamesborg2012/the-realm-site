@@ -1,18 +1,22 @@
 @use "variables";
 
 /**
- * New Releases carousel (item 32).
+ * Product carousels (item 33) — shared by the New Releases and Pre-Orders blocks.
  *
- * The track is `ul.products.trm-new-releases__track`; Slick turns each `li.product` into a slide.
+ * The track is `ul.products.trm-carousel__track`; Slick turns each `li.product` into a slide.
  * WooCommerce/Storefront give `ul.products li.product` their own width + float for the shop grid —
  * neutralised here so Slick controls slide width. Under infinite:false a short set (<= slidesToShow)
  * renders left-aligned and Slick disables the arrows itself, so the CSS must not force fill/centre.
+ *
+ * The triangular corner badge (`.trm-carousel__thumb` / `.trm-carousel__badge`) is drawn by the base
+ * class for any carousel whose subclass returns a `badge_label()` — "New!" (New Releases) or
+ * "Pre-Order" (Pre-Orders).
  */
 
-$trm-nr-red: #c8102e;
-$trm-nr-gap: 10px;
+$trm-carousel-red: #c8102e;
+$trm-carousel-gap: 10px;
 
-.trm-new-releases {
+.trm-carousel {
     margin: 0 0 2.5em;
 
     &__title {
@@ -39,8 +43,8 @@ $trm-nr-gap: 10px;
 
             > li.product {
                 flex: 0 0 auto;
-                width: calc(25% - #{$trm-nr-gap} * 2);
-                margin: 0 $trm-nr-gap;
+                width: calc(25% - #{$trm-carousel-gap} * 2);
+                margin: 0 $trm-carousel-gap;
             }
         }
 
@@ -53,7 +57,7 @@ $trm-nr-gap: 10px;
 
         .slick-slide {
             height: auto;
-            padding: 0 $trm-nr-gap;
+            padding: 0 $trm-carousel-gap;
             box-sizing: border-box;
 
             // Undo Storefront's shop-grid sizing so the slide fills its Slick cell.
@@ -68,16 +72,17 @@ $trm-nr-gap: 10px;
         }
     }
 
-    // --- "New!" corner badge on the thumbnail --------------------------------
-    // .trm-nr-thumb wraps the loop item thumbnail (injected around WC's thumbnail hook, scoped to
-    // this carousel only). The badge is a solid triangle in the bottom-right corner with rotated text.
-    &__track .trm-nr-thumb {
+    // --- Triangular corner badge on the thumbnail ----------------------------
+    // .trm-carousel__thumb wraps the loop item thumbnail (injected around WC's thumbnail hook, scoped
+    // to this carousel only). The badge is a solid triangle in the bottom-right corner with rotated
+    // text — drawn for any variant whose subclass returns a badge_label().
+    &__thumb {
         position: relative;
         display: block;
         overflow: hidden;
     }
 
-    .trm-nr-badge {
+    &__badge {
         position: absolute;
         right: 0;
         bottom: 0;
@@ -94,26 +99,33 @@ $trm-nr-gap: 10px;
             content: "";
             position: absolute;
             inset: 0;
-            background: $trm-nr-red;
+            background: $trm-carousel-red;
             clip-path: polygon(100% 0, 100% 100%, 0 100%);
             z-index: 0;
         }
+    }
 
-        &__label {
-            position: relative;
-            z-index: 1;
-            // Flex-centre sits at (36,36) of the 72px box; nudge to the triangle centroid (48,48),
-            // then rotate along the hypotenuse so the text reads bottom-left → top-right.
-            transform: translate(12px, 12px) rotate(-45deg);
-            color: #fff;
-            font-weight: 700;
-            font-size: 11px;
-            line-height: 1;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
-        }
+    &__badge-label {
+        position: relative;
+        z-index: 1;
+        // Flex-centre sits at (36,36) of the 72px box; nudge to the triangle centroid (48,48),
+        // then rotate along the hypotenuse so the text reads bottom-left → top-right.
+        transform: translate(12px, 12px) rotate(-45deg);
+        color: #fff;
+        font-weight: 700;
+        font-size: 11px;
+        line-height: 1;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+    }
+
+    // Longer labels overflow the ~68px usable diagonal at the default size. "New!" (4 chars) fits;
+    // "Pre-Order" (9 chars) needs a smaller, tighter face to sit inside the triangle.
+    &--pre-orders &__badge-label {
+        font-size: 9px;
+        letter-spacing: 0;
     }
 
     // --- Arrows (accessible names come from Slick's default button text) ------
@@ -124,7 +136,7 @@ $trm-nr-gap: 10px;
         z-index: 2;
 
         &:before {
-            color: $trm-nr-red;
+            color: $trm-carousel-red;
             font-size: 28px;
             opacity: 1;
         }
@@ -135,7 +147,7 @@ $trm-nr-gap: 10px;
         }
 
         &:focus-visible {
-            outline: 2px solid $trm-nr-red;
+            outline: 2px solid $trm-carousel-red;
             outline-offset: 2px;
         }
     }

@@ -1,8 +1,8 @@
 /**
- * New Releases carousel (item 32).
+ * Product carousels (item 33) — shared by the New Releases and Pre-Orders ACF blocks.
  *
- * Initialises Slick on every `.trm-new-releases__track` (one per block instance). Guards against
- * double-init with `.not('.slick-initialized')` so multiple instances — or a re-run — are safe.
+ * Initialises Slick on every `.trm-carousel__track` (one per block instance, either variant). Guards
+ * against double-init with `.not('.slick-initialized')` so multiple instances — or a re-run — are safe.
  *
  * Config: 4-up on desktop, scrolling/stopping 4 at a time (infinite:false), stepping down to 3/2/1
  * on narrower viewports with slidesToScroll matched to slidesToShow. Arrows on, dots off, no
@@ -12,8 +12,8 @@
 (function ($) {
     'use strict';
 
-    function initNewReleases() {
-        $('.trm-new-releases__track').not('.slick-initialized').each(function () {
+    function initCarousels() {
+        $('.trm-carousel__track').not('.slick-initialized').each(function () {
             $(this).slick({
                 slidesToShow: 4,
                 slidesToScroll: 4,
@@ -43,6 +43,6 @@
         if (typeof $.fn.slick !== 'function') {
             return;
         }
-        initNewReleases();
+        initCarousels();
     });
 })(jQuery);

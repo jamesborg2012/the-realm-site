@@ -1561,63 +1561,67 @@ body.woocommerce-cart .cart-collaterals .cart_totals .checkout-button {
 }
 
 /**
- * New Releases carousel (item 32).
+ * Product carousels (item 33) — shared by the New Releases and Pre-Orders blocks.
  *
- * The track is `ul.products.trm-new-releases__track`; Slick turns each `li.product` into a slide.
+ * The track is `ul.products.trm-carousel__track`; Slick turns each `li.product` into a slide.
  * WooCommerce/Storefront give `ul.products li.product` their own width + float for the shop grid —
  * neutralised here so Slick controls slide width. Under infinite:false a short set (<= slidesToShow)
  * renders left-aligned and Slick disables the arrows itself, so the CSS must not force fill/centre.
+ *
+ * The triangular corner badge (`.trm-carousel__thumb` / `.trm-carousel__badge`) is drawn by the base
+ * class for any carousel whose subclass returns a `badge_label()` — "New!" (New Releases) or
+ * "Pre-Order" (Pre-Orders).
  */
-.trm-new-releases {
+.trm-carousel {
   margin: 0 0 2.5em;
 }
-.trm-new-releases__title {
+.trm-carousel__title {
   margin: 0 0 1em;
 }
-.trm-new-releases__empty {
+.trm-carousel__empty {
   margin: 0;
   font-style: italic;
   opacity: 0.85;
 }
-.trm-new-releases__track {
+.trm-carousel__track {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.trm-new-releases__track:not(.slick-initialized) {
+.trm-carousel__track:not(.slick-initialized) {
   display: flex;
   flex-wrap: nowrap;
   overflow: hidden;
 }
-.trm-new-releases__track:not(.slick-initialized) > li.product {
+.trm-carousel__track:not(.slick-initialized) > li.product {
   flex: 0 0 auto;
   width: calc(25% - 10px * 2);
   margin: 0 10px;
 }
-.trm-new-releases__track .slick-track {
+.trm-carousel__track .slick-track {
   display: flex;
   align-items: stretch;
   margin-left: 0;
 }
-.trm-new-releases__track .slick-slide {
+.trm-carousel__track .slick-slide {
   height: auto;
   padding: 0 10px;
   box-sizing: border-box;
 }
-.trm-new-releases__track .slick-slide.product,
-.trm-new-releases__track .slick-slide > li.product,
-.trm-new-releases__track .slick-slide .product {
+.trm-carousel__track .slick-slide.product,
+.trm-carousel__track .slick-slide > li.product,
+.trm-carousel__track .slick-slide .product {
   width: auto !important;
   margin: 0 !important;
   float: none !important;
   clear: none !important;
 }
-.trm-new-releases__track .trm-nr-thumb {
+.trm-carousel__thumb {
   position: relative;
   display: block;
   overflow: hidden;
 }
-.trm-new-releases .trm-nr-badge {
+.trm-carousel__badge {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -1629,7 +1633,7 @@ body.woocommerce-cart .cart-collaterals .cart_totals .checkout-button {
   align-items: center;
   justify-content: center;
 }
-.trm-new-releases .trm-nr-badge::before {
+.trm-carousel__badge::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -1637,7 +1641,7 @@ body.woocommerce-cart .cart-collaterals .cart_totals .checkout-button {
   clip-path: polygon(100% 0, 100% 100%, 0 100%);
   z-index: 0;
 }
-.trm-new-releases .trm-nr-badge__label {
+.trm-carousel__badge-label {
   position: relative;
   z-index: 1;
   transform: translate(12px, 12px) rotate(-45deg);
@@ -1650,31 +1654,35 @@ body.woocommerce-cart .cart-collaterals .cart_totals .checkout-button {
   white-space: nowrap;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
-.trm-new-releases .slick-prev,
-.trm-new-releases .slick-next {
+.trm-carousel--pre-orders .trm-carousel__badge-label {
+  font-size: 9px;
+  letter-spacing: 0;
+}
+.trm-carousel .slick-prev,
+.trm-carousel .slick-next {
   width: 34px;
   height: 34px;
   z-index: 2;
 }
-.trm-new-releases .slick-prev:before,
-.trm-new-releases .slick-next:before {
+.trm-carousel .slick-prev:before,
+.trm-carousel .slick-next:before {
   color: #c8102e;
   font-size: 28px;
   opacity: 1;
 }
-.trm-new-releases .slick-prev.slick-disabled:before,
-.trm-new-releases .slick-next.slick-disabled:before {
+.trm-carousel .slick-prev.slick-disabled:before,
+.trm-carousel .slick-next.slick-disabled:before {
   opacity: 0.25;
 }
-.trm-new-releases .slick-prev:focus-visible,
-.trm-new-releases .slick-next:focus-visible {
+.trm-carousel .slick-prev:focus-visible,
+.trm-carousel .slick-next:focus-visible {
   outline: 2px solid #c8102e;
   outline-offset: 2px;
 }
-.trm-new-releases .slick-prev {
+.trm-carousel .slick-prev {
   left: -6px;
 }
-.trm-new-releases .slick-next {
+.trm-carousel .slick-next {
   right: -6px;
 }
 

@@ -20,8 +20,11 @@ new TRM_Profit_Analytics();
 new TRM_Coming_Soon();
 new TRM_Preorder();
 new TRM_New_Releases();
+new TRM_Pre_Orders();
 new TRM_Core();
 ```
+
+(`TRM_Carousel_Block` is `require`d before the two carousel subclasses but is abstract — never instantiated.)
 
 Enqueues:
 - Site CSS: `assets/css/layout.css` (compiled from SCSS, cache-busted with `time()`).
@@ -205,21 +208,40 @@ Admin page: **WooCommerce → Profit Analytics** (`trm-profit-analytics`, `manag
 
 Pre-order / "Coming Soon" handling. Settings picker (`trm_coming_soon_category`, term ID) under WC → Settings → General; a Meta Box **"Release Information"** panel with a single `trm_release_date` date field (`Y-m-d`); a single-product release-date line; a `pre_get_posts` (prio 99) gate hiding Coming Soon products from every listing except the Coming Soon archive; and a daily WP-Cron (`trm_remove_coming_soon_expired`, ~00:01 local) that strips the category once `trm_release_date <= today` (lexicographic string compare — **never** `CAST … AS DATE`).
 
+- **`BYPASS_QUERY_VAR`** (`trm_bypass_coming_soon`, item 33): the pre_get_posts gate (`exclude_coming_soon_from_catalog`) early-returns when a query sets this var, so a secondary query that *wants* Coming Soon products can opt out. Used by `TRM_Pre_Orders` (the Pre-Orders carousel). This is the only intended consumer.
+
 - **`trm_release_date` now allows past dates** (item 32): the `js_options.minDate => 0` restriction was removed so a mis-entered release date can be corrected after launch. Backdating a still-Coming-Soon product makes the next cron run strip the category (the `<= today` match). Storage format (`Y-m-d`) and everything else about the field is unchanged.
 - **WP-Cron lag limitation:** WP-Cron only fires on the first request after the scheduled time, so on a quiet Saturday morning with no traffic the Coming Soon category may not yet be stripped from that day's releases — which can leave the New Releases carousel empty on the week's most important day. There's no clean code fix; the real fix is a server-level cron hitting `wp-cron.php` (a hosting change). Do **not** work around it by relaxing the Coming Soon veto — that veto is load-bearing for deliberately delayed launches.
 
+### `TRM_Carousel_Block` (abstract) — [classes/carousel/trm-carousel-block.php](classes/carousel/trm-carousel-block.php)
+
+Shared base for the theme's product-carousel ACF blocks (item 33). Extends `TRM_Core`; both `TRM_New_Releases` and `TRM_Pre_Orders` extend **it**. Owns everything the two carousels share: ACF block + optional **Title** field registration, `render_block()` (→ shared template [parts/blocks/carousel.php](parts/blocks/carousel.php)), the top-level-category **grouping sort** (`sort_by_top_level_category` / `get_top_level_ordinals` — same order `TRM_Mega_Nav` uses), the **display-cap** accessor `get_max_products()` (empty/0/non-numeric/negative → `DEFAULT_MAX` 20, `> MAX_CAP` 50), the **self-invalidating transient** (`{ window_start, ids }`, 1h, keyed on window start), the shared **cache-flush** hooks (`save_post_product`, product trash/untrash/delete, `product_cat` create/edit/delete, `TRM_Coming_Soon::CRON_HOOK` prio 99), and **asset enqueue** (Slick + one shared `assets/js/trm-carousel.js` initialising every `.trm-carousel__track`).
+
+- Late static binding: shared code reads each subclass's `BLOCK_NAME` / `OPTION_MAX` / `TRANSIENT` via `static::`. `DEFAULT_MAX` (20) / `MAX_CAP` (50) / `QUERY_CEILING` (200) / `BASE_CLASS` (`trm-carousel`) are base constants a subclass may redeclare.
+- Subclass contract (abstract/overridable): identity strings (`block_title` / `block_description` / `block_icon` / `block_keywords` / `field_group_key` / `field_group_title` / `field_key` / `title_placeholder` / `variant_slug` / `region_label` / `empty_message` / `log_label`); `get_window()`; `build_query_args($window)` (merged onto a shared `WP_Query` scaffold — `post_type=product`, `publish`, `fields=ids`, `orderby date DESC,ID DESC`); `add_settings($settings)` (abstract — the two blocks differ, see below); `settings_priority()` (default 10); `is_available()` (default true — short-circuits `get_sorted_ids()` to `[]`); and `badge_label()` (default `''` = no badge). Shared query helpers `price_gate_clauses()` (the `_price` presence gate, mirrors `TRM_WC_Hooks`) + `visibility_tax_clause()` (`product_visibility NOT IN outofstock,exclude-from-catalog`) are exposed for `build_query_args`.
+- **Corner badge:** when `badge_label()` is non-empty the base draws a triangular bottom-right badge over each card's thumbnail (`.trm-carousel__thumb` wrapper + `.trm-carousel__badge` / `.trm-carousel__badge-label`), by wrapping WooCommerce's thumbnail hook (`woocommerce_before_shop_loop_item_title` prio 9 open, prio 11 badge + close) via `add_loop_hooks()` / `remove_loop_hooks()` — registered and torn down around this block's loop render only, so no other product loop is affected. Decorative (`aria-hidden`). New Releases = "New!", Pre-Orders = "Pre-Order".
+- **Front-end DOM:** `<section class="trm-carousel trm-carousel--{variant}">` → optional `<h2 class="trm-carousel__title">` → `<ul class="products columns-4 trm-carousel__track">` of `content-product` cards (or `<p class="trm-carousel__empty">`). Styles in [assets/scss/carousel.scss](assets/scss/carousel.scss).
+
 ### `TRM_New_Releases` — [classes/new-releases/trm-new-releases.php](classes/new-releases/trm-new-releases.php)
 
-"New Releases" carousel (item 32) — an ACF block surfacing every product released in the current release week, grouped by top-level game system. Extends `TRM_Core`.
+"New Releases" carousel (item 32) — an ACF block surfacing every product released in the current release week, grouped by top-level game system. As of item 33 a thin subclass of `TRM_Carousel_Block` (behaviour unchanged); supplies only the specifics below.
 
-- **Block** `acf/new-releases-carousel` (category `trm-blocks`), one PHP-registered ACF field **Title** (group `group_trm_new_releases`, `block == acf/new-releases-carousel`) — **no acf-json**. `render_callback` → `render_block()` → includes [parts/blocks/block-new-releases-carousel.php](parts/blocks/block-new-releases-carousel.php); `enqueue_assets` → Slick + `assets/js/trm-new-releases.js`.
+- **Block** `acf/new-releases-carousel` (category `trm-blocks`), one PHP-registered ACF field **Title** (group `group_trm_new_releases`, `block == acf/new-releases-carousel`) — **no acf-json**. Renders via the shared base → [parts/blocks/carousel.php](parts/blocks/carousel.php); assets via the shared `assets/js/trm-carousel.js`.
 - **Window** `[most recent Saturday … today]`, inclusive, in `wp_timezone()`. On a Saturday the start IS today (branches on ISO weekday `'6'`, not `modify('last saturday')`). Deliberately never extends into the future.
-- **Qualify:** `trm_release_date` in-window (meta_query `BETWEEN`, **`type => CHAR`** — never `DATE`), published, `_price` present, `product_visibility NOT IN (outofstock, exclude-from-catalog)` (= in stock or on backorder, catalogue-visible), and `product_cat NOT IN` the Coming Soon term (+children) when one is configured. Self-sufficient query (doesn't rely on the global `pre_get_posts` gates, which are redundant-but-harmless here).
-- **Ordering:** grouped by top-level `product_cat` ancestor (`get_ancestors`), groups in WooCommerce display order — the **same** ordering `TRM_Mega_Nav` uses (parent=0 terms by `order` termmeta then name, Uncategorized skipped → sorted last). Newest-first within a group (`post_date DESC, ID DESC` + PHP 8 stable `usort` on the category ordinal). Each product appears once (min ordinal across its trees).
-- **Display cap** option `trm_new_releases_max_products` (WC → Settings → General, section "The Realm — New Releases"): empty/0/non-numeric/negative → **20**, `> 50` → **50**. Applied after the sort. Query ceiling `QUERY_CEILING = 200` (`fields => ids`, `no_found_rows`); cap-trim and ceiling-hit are logged via `write_log()`.
-- **Cache:** transient **`trm_new_releases_ids`** = `{ window_start, ids }` (uncapped, sorted), 1h TTL. A stored `window_start` ≠ current → miss (self-invalidates on week roll-over; cap applied on read, never cached). Explicit `delete_transient` on `save_post_product`, `trashed_post`/`untrashed_post`/`deleted_post` (product only), `created_product_cat`/`edited_product_cat`/`delete_product_cat`, and `trm_remove_coming_soon_expired` (prio 99, after the cron strips categories).
-- **Cards** reuse `wc_get_template_part('content','product')` inside a hand-written `<ul class="products columns-4 trm-new-releases__track">` (the Slick track). Sets `$post` + `$product` globals per item (the `the_post` action doesn't fire on `setup_postdata`). Empty state renders **"No products released this week."** on front end AND editor.
-- **"New!" thumbnail badge:** a triangular bottom-right corner badge (`.trm-nr-badge`, clip-path triangle + rotated label) over each card's thumbnail. Injected by wrapping the loop thumbnail via `woocommerce_before_shop_loop_item_title` (prio 9 open `.trm-nr-thumb`, prio 11 badge + close) — **added and removed around this block's loop render only** (`open_thumb_wrap` / `render_thumb_badge`), so no other WooCommerce product loop is affected. Decorative (`aria-hidden`; the section already reads as "New Releases").
+- **Qualify** (`build_query_args`): `trm_release_date` in-window (meta_query `BETWEEN`, **`type => CHAR`** — never `DATE`), published, `_price` present, `product_visibility NOT IN (outofstock, exclude-from-catalog)` (= in stock or on backorder, catalogue-visible), and `product_cat NOT IN` the Coming Soon term (+children) when one is configured. Self-sufficient query.
+- **Ordering / cap / cache:** the base's category grouping (`post_date DESC, ID DESC` newest-first within each top-level-category group), display cap `trm_new_releases_max_products` (its own **"The Realm — New Releases"** settings section, added by this subclass's `add_settings`), and transient **`trm_new_releases_ids`**.
+- **"New!" thumbnail badge:** `badge_label()` returns "New!"; the base draws the triangular bottom-right corner badge (see `TRM_Carousel_Block` above).
+
+### `TRM_Pre_Orders` — [classes/pre-orders/trm-pre-orders.php](classes/pre-orders/trm-pre-orders.php)
+
+"Pre-Orders" carousel (item 33) — the **mirror image** of New Releases: surfaces products **currently in** the Coming Soon category (New Releases *vetoes* them) that opened for pre-order recently. Subclass of `TRM_Carousel_Block`; `badge_label()` returns "Pre-Order" (same triangular corner badge as New Releases).
+
+- **Block** `acf/pre-orders-carousel` (category `trm-blocks`), one PHP-registered ACF field **Title** (group `group_trm_pre_orders`) — no acf-json. Shares the base render template + `trm-carousel.js` (DOM modifier `trm-carousel--pre-orders`).
+- **Window:** created in the last **14 days** (`WINDOW_DAYS`), on the core **`post_date`** column — on this store a product is created when its pre-order opens, so no new date/meta field. `get_window()` → `start` = midnight 14 days ago (cache key, rolls daily), `end` = today. Query uses a `date_query` (`column post_date`, `after start 00:00:00`, `inclusive`).
+- **Qualify:** `_price` present, `product_visibility NOT IN (outofstock, exclude-from-catalog)`, and `product_cat IN` the Coming Soon term (+children). **`is_available()` returns false when no Coming Soon category is configured** → empty state, no query.
+- **Coming Soon gate bypass:** the query sets **`TRM_Coming_Soon::BYPASS_QUERY_VAR`** (`trm_bypass_coming_soon => true`) so `TRM_Coming_Soon::exclude_coming_soon_from_catalog` (pre_get_posts prio 99) skips this secondary query — otherwise that gate would strip exactly the Coming Soon products this block exists to show. This is the block's one cross-feature touchpoint.
+- **Display cap** option `trm_pre_orders_max_products` — same 20/50 semantics, but `add_settings()` **splices** the field into the **existing "The Realm — Pre-Orders" section** (id `trm_preorder_options`, owned by `TRM_Preorder`) just before its `sectionend`, at filter priority **20** so it runs after `TRM_Preorder`. Falls back to its own section only if that host isn't present.
+- **Cache:** transient **`trm_pre_orders_ids`**. Same flush hooks as New Releases (both are base-registered); the cron flush matters here too (a released product must *leave* this carousel).
 
 ## WooCommerce template overrides
 
@@ -248,9 +270,9 @@ npm run compile:sass     # one-off
 npm run watch:sass       # dev
 ```
 
-Entry: [assets/scss/styles.scss](assets/scss/styles.scss) → uses `variables`, `font`, `general`, `header`, `footer`, `mega-nav`, `cart`, `wc-shop`, `wc-cart`, `wc-single-product`, `wc-product-cat`, `new-releases`, `single-event`, `event-registration`, `live-search`, `on-order`, `preorder`.
+Entry: [assets/scss/styles.scss](assets/scss/styles.scss) → uses `variables`, `font`, `general`, `header`, `footer`, `mega-nav`, `cart`, `wc-shop`, `wc-cart`, `wc-single-product`, `wc-product-cat`, `carousel`, `single-event`, `event-registration`, `live-search`, `on-order`, `preorder`.
 
-Front-end JS of note: `assets/js/trm-new-releases.js` (New Releases carousel — Slick init on `.trm-new-releases__track`, guarded against double-init; enqueued by the block's `enqueue_assets`, not in `functions.php`).
+Front-end JS of note: `assets/js/trm-carousel.js` (shared carousel init — Slick on every `.trm-carousel__track`, guarded against double-init; serves both the New Releases and Pre-Orders blocks; enqueued by each block's base `enqueue_assets`, not in `functions.php`).
 
 Admin CSS is hand-written (no SCSS): `assets/css/admin/admin.css`, `cost-price.css`, `profit-analytics.css`.
 

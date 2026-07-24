@@ -27,6 +27,13 @@ class TRM_Coming_Soon extends TRM_Core
     /** Daily cron hook that removes the Coming Soon category from released products. */
     const CRON_HOOK = 'trm_remove_coming_soon_expired';
 
+    /**
+     * WP_Query var that opts a query out of the frontend Coming Soon exclusion below. Set it on a
+     * secondary query that deliberately wants Coming Soon products — e.g. the Pre-Orders carousel
+     * (TRM_Pre_Orders), which exists to surface exactly the products this gate normally hides.
+     */
+    const BYPASS_QUERY_VAR = 'trm_bypass_coming_soon';
+
     public function __construct()
     {
         $this->register_hook_callbacks();
@@ -202,6 +209,12 @@ class TRM_Coming_Soon extends TRM_Core
     public function exclude_coming_soon_from_catalog($q)
     {
         if (is_admin() || wp_doing_ajax() || (defined('REST_REQUEST') && REST_REQUEST)) {
+            return;
+        }
+
+        // Explicit opt-out for queries that deliberately want Coming Soon products (e.g. the
+        // Pre-Orders carousel). Checked first so such a query is never filtered.
+        if ($q->get(self::BYPASS_QUERY_VAR)) {
             return;
         }
 
