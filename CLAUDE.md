@@ -40,7 +40,8 @@ wp-content/
     ├── realm-gw-excel-uploader/     # CUSTOM
     ├── realm-gw-order-tracker/      # CUSTOM
     ├── realm-members-manager/       # CUSTOM
-    └── realm-sales-system/          # CUSTOM — backend order-placing module (requires realm-barcode-scanner)
+    ├── realm-sales-system/          # CUSTOM — backend order-placing module (requires realm-barcode-scanner)
+    └── realm-stock-history/         # CUSTOM — per-product stock-change audit log (optional observer; nothing depends on it)
 ```
 
 The Gutenberg block editor is disabled (Classic Editor + Disable Gutenberg + Classic Widgets). The one place we *do* use blocks is the ACF-registered Account Creation block (rendered from `parts/blocks/block-account-creation.php`).
@@ -140,7 +141,7 @@ Membership price displayed on the CTA is `get_option("rmm_{$rounded}_months_memb
 
 ## Custom plugins
 
-All six `realm-*` plugins are first-party code authored by James Borg. Treat them as part of this codebase.
+All seven `realm-*` plugins are first-party code authored by James Borg. Treat them as part of this codebase.
 
 ### `realm-members-manager` — the big one
 
@@ -215,6 +216,21 @@ Backend order-placing module for in-store sales (alternative to WC's Add Order s
 - **Marketing orders** (New Marketing Order page / `rss_place_marketing_order`): a mode-flagged reuse of the same view + JS with no member section, no customer fields and no discounts. Attributed to the `realm.marketing` user (or the first `marketing`-role user, else error); tagged `_rss_marketing_order` + `trm_is_marketing_order = 'yes'` so it stays inline with the theme's marketing-order logic and the order-tracker's `marketing`-role exclusion. **Priced at cost with zero VAT:** every line is charged at the product's **current cost price** (theme's `TRM_Cost_Price_DB::get_current_price()`, keyed by `variation_id` when non-zero) used verbatim as the net line total, with each line's taxes zeroed (`set_taxes([])`) and `calculate_totals(false)` so WC doesn't re-derive VAT — order tax total = 0, order total = Σ(cost × qty). A product with **no** cost-price row is rejected on scan/search and aborts placement (a `0.00` cost is valid); if the cost-price system is unavailable, marketing orders are refused. The **standard** `rss_place_order` flow is unchanged (retail price, member discount, normal VAT).
 - No custom DB tables.
 
+### `realm-stock-history`
+
+Self-contained, **disposable audit log** of every product stock movement (item 34). Records signed qty change, stock before/after, movement type, order ID, user, note, timestamp — surfaced on a product-editor metabox and a central **WooCommerce → Stock History** page. Prefix `rsh_` / `RSH_`. **Observation only — it never mutates stock**, and it is an **audit log only**: nothing may derive/reconcile actual stock from it.
+
+- **Table `{prefix}rsh_stock_history`** (`id`, `product_id`, `qty_change` signed, `stock_before` INT NULL, `stock_after` INT NULL, `change_type` VARCHAR(20), `order_id` NULL, `user_id` NULL, `note` VARCHAR(255) NULL, `created_at` DATETIME local). Schema versioned via option `rsh_db_version` (`1.0`, `dbDelta`, self-heal on `admin_init`). Option `rsh_tracking_started` (`Y-m-d`) set once at activation. **No backfill** — history starts at activation.
+- **Change types (closed set):** `sale`, `restock`, `manual`, `import`, `scanner`, `marketing`, `other` (unknown → `other`).
+- **Capture split (core rule), one row per logical change:**
+  1. **WC-driven** — order lines via `woocommerce_reduce_order_item_stock` / `woocommerce_restore_order_item_stock` (`sale`/`marketing` by order meta `trm_is_marketing_order`/`_rss_marketing_order`; `restock` on restore); everything else through WC via `woocommerce_product_set_stock` (+ `..._before_set_stock` for `stock_before`) → `manual`/`import`.
+  2. **Direct writes bypassing WC** — only via the public action.
+  - **De-dup:** order reductions also fire `woocommerce_product_set_stock`, so the product-level recorder is suppressed during an order stock op by an in-flight flag set in `woocommerce_can_(reduce|restore)_order_stock` and cleared in `woocommerce_(reduce|restore)_order_stock`.
+- **Public action `rsh_record_stock_change`** — `do_action('rsh_record_stock_change', $args)`, fail-soft (no-op when inactive). Args: `product_id` (req), `qty_change` (req unless both `stock_before`+`stock_after` given), `stock_before`/`stock_after`, `change_type`, `order_id`, `user_id`, `note`. Full contract in `RSH_Listeners::on_public_record()`.
+- **Cron `rsh_purge_stock_history`** — daily, batched delete of rows older than **12 months** (hardcoded; window stated in the UI). Scheduled at activation + self-healed on `admin_init`.
+- **AJAX `rsh_fetch_stock_history`** (admin-only, no nopriv): nonce `rsh_stock_history` + `manage_woocommerce` + `edit_post` for the requested product. Serves the shared summary+table renderer to both views.
+- **Barcode-scanner audit:** the scanner adjusts stock via WC CRUD (not a direct `_stock` write), so it is caught by the product-level recorder as `manual` — no `do_action` added to that plugin; the `scanner` type is reserved for future direct-write callers.
+
 ---
 
 ## Cross-cutting features
@@ -249,13 +265,14 @@ Member discounts are now applied **directly to the cart** (per-line pricing in `
 - **`Realm Members Manager`** sets the `rmm_membership_*` meta keys that the theme's AJAX registration reads (`rmm_membership_number` duplicate check, `rmm_membership_status = 'review'` write). Its My Account "Membership" tab writes the same `review` status. Its member discount depends on the `product_brand: online-only` term (below) to split store vs online-only rates.
 - **`realm-gw-order-tracker`** filters on a `product_brand` taxonomy with an `online-only` term. **This taxonomy is created/maintained by a custom CSV importer built for the client (not in this repo).** Don't expect it to be defined in PHP — it's seeded from the import.
 - **`realm-sales-system` → theme `TRM_Cost_Price_DB`** (item 31): the New Marketing Order flow prices lines at cost via `TRM_Cost_Price_DB::get_current_price()` — a **plugin→theme** call (inverts the usual theme→plugin direction). Guarded with `class_exists` + `method_exists`; if the theme/cost-price system is absent, marketing orders are cleanly refused (adds rejected, placement aborts). The standard Sales System order flow has no such dependency.
+- **`realm-stock-history` is an optional observer — nothing may depend on it.** It listens to WooCommerce's own stock hooks and only accepts external input via the fail-soft `do_action('rsh_record_stock_change', $args)` action (a no-op when the plugin is inactive). No other file references any `RSH_*` symbol or its table; deleting the plugin cannot fatal the site or break any stock operation. Its table is an **audit log only** — never read it to derive or correct stock levels.
 
 ---
 
 ## Conventions worth knowing
 
 - All custom theme classes extend `TRM_Core` and use `render_template('admin/foo/bar', [...])` to render views from `assets/views/`. `extract()` is used, so view variables come in as locals.
-- Custom plugin code is namespaced by prefix (`trm_` for theme, `rbs_` / `trem_` / `gweu_` / `gwot_` / `rmm_` / `rss_` for plugins). Stick to the existing prefix when adding new options, meta, or AJAX actions.
+- Custom plugin code is namespaced by prefix (`trm_` for theme, `rbs_` / `trem_` / `gweu_` / `gwot_` / `rmm_` / `rss_` / `rsh_` for plugins). Stick to the existing prefix when adding new options, meta, or AJAX actions.
 - Custom user roles in use: `customer` (standard), `marketing` (special — orders are flagged + excluded from the order tracker).
 - Block editor is disabled almost everywhere; new front-end UI should be added as Storefront templates, WC template overrides, ACF blocks, or shortcodes — **not** as core blocks.
 - WP_DEBUG is on in this XAMPP setup; `TRM_Core::write_log()` only writes when `WP_DEBUG === true`.
@@ -273,6 +290,7 @@ Deeper notes live alongside each component — they load automatically when Clau
 - [Plugin: realm-gw-excel-uploader](wp-content/plugins/realm-gw-excel-uploader/CLAUDE.md)
 - [Plugin: realm-gw-order-tracker](wp-content/plugins/realm-gw-order-tracker/CLAUDE.md)
 - [Plugin: realm-sales-system](wp-content/plugins/realm-sales-system/CLAUDE.md)
+- [Plugin: realm-stock-history](wp-content/plugins/realm-stock-history/CLAUDE.md)
 
 ## Still worth confirming
 

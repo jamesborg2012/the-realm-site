@@ -23,6 +23,7 @@ x-wp-mounts: &wp-mounts
   - ./wp-content/plugins/realm-gw-order-tracker:/var/www/html/wp-content/plugins/realm-gw-order-tracker
   - ./wp-content/plugins/realm-members-manager:/var/www/html/wp-content/plugins/realm-members-manager
   - ./wp-content/plugins/realm-sales-system:/var/www/html/wp-content/plugins/realm-sales-system
+  - ./wp-content/plugins/realm-stock-history:/var/www/html/wp-content/plugins/realm-stock-history
 
 services:
   db:
